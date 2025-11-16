@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router.js'
-import * as constants from './utils/constants.js'
+import App from '@/App.vue'
+import router from '@/router.js'
+import * as constants from '@/utils/constants.js'
 
 // Element Plus imports
 import ElementPlus from 'element-plus'

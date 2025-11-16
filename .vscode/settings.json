@@ -1,0 +1,48 @@
+{
+	"breadcrumbs.enabled": false,
+	"explorer.fileNesting.enabled": false,
+	"editor.stickyScroll.enabled": false,
+	"editor.detectIndentation": true,
+	"editor.tabSize": 4,
+	"editor.insertSpaces": false,
+	"workbench.tree.enableStickyScroll": false,
+	"editor.lightbulb.enabled": "off",
+	"explorer.autoReveal": false,
+	"explorer.expandSingleFolderWorkspaces": false,
+	"editor.codeActions.triggerOnFocusChange": false,
+	"editor.codeLens": false,
+	"editor.folding": false,
+	"chat.tools.terminal.autoApprove": {
+		"rm": false,
+		"rmdir": false,
+		"del": false,
+		"kill": false,
+		"curl": false,
+		"wget": false,
+		"eval": false,
+		"chmod": false,
+		"chown": false,
+		"/^Remove-Item\\b/i": false
+	},
+	"files.eol": "\n",
+	"files.watcherExclude": {
+		"**/out/**": true,
+		"**/.vite/**": true,
+		"**/node_modules/**": true
+	},
+	"search.exclude": {
+		"**/out/**": true,
+		"**/.vite/**": true,
+		"**/node_modules/**": true
+	},
+
+	// ESLint settings
+	"eslint.validate": [
+		"javascript",
+		"vue"
+	],
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+	"eslint.format.enable": true
+}

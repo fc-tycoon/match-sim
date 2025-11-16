@@ -16,6 +16,6 @@ export const STORAGE_KEYS = {
  * Application metadata
  */
 export const APP_INFO = {
-	NAME: 'FC Tycoon Match Simulator',
+	NAME: 'FC Tycoon 2027 Match Simulator',
 	SHORT_NAME: 'Match Simulator',
 }

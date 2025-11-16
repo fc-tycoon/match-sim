@@ -1,4 +1,4 @@
-# FC Tycoon - Match Simulator
+# FC Tycoon 2027 - Match Simulator
 
 A browser-based football/soccer match engine with deterministic physics, AI-driven players, and comprehensive replay capabilities.
 
