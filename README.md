@@ -1,6 +1,6 @@
 # FC Tycoon 2027 - Match Simulator
 
-A browser-based football/soccer match engine with deterministic physics, AI-driven players, and comprehensive replay capabilities.
+A browser-based football/soccer match engine with fully deterministic physics, AI-driven players, and perfect replay capabilities using seeded PRNG.
 
 ---
 
@@ -80,16 +80,15 @@ npm run lint      # Check code quality and style
 
 4. **[WORKERS.md](./docs/WORKERS.md)** - Per-player AI architecture
    - Per-player AI instances (persistent state, intention-based returns)
-   - Main thread handles ball/player physics
-   - Configurable AI scripts (team-level + goalkeeper can differ)
-   - State updates only on tactical/phase/instruction changes
-   - Weight-based tendencies (0.0-1.0 floats): hugsTouchline, findsSpace, etc.
+   - Seeded PRNG for deterministic AI decisions
+   - Intention-based protocol (AI returns intentions, engine applies outcomes)
+   - State updates (tactics/phase/instructions changes)
    - Future: Web Workers/Worker Threads for parallelization
 
-5. **[VIEWER.md](./docs/VIEWER.md)** - Viewer/simulation separation
-   - One-way communication (simulation → viewer, NO feedback)
-   - Variable framerate display (60/144/240 Hz) with variable interval interpolation
-   - Interpolation (Lerp positions, Slerp rotations)
+5. **[RENDERING.md](./docs/2D_VS_3D.md)** - Renderer/simulation separation
+   - One-way communication (simulation state → renderer, NO feedback)
+   - Renderer reads current state without affecting simulation
+   - Deterministic simulation independent of display framerate
    - Camera perspectives (broadcast, tactical, 1st-person)
 
 ### Game Components
@@ -108,12 +107,13 @@ npm run lint      # Check code quality and style
    - Boundary collision detection
 
 8. **[PLAYERS.md](./docs/PLAYERS.md)** - Player attributes and weight-based tendencies
-   - Limited vision (120° FOV, 50m range, 15-60ms dynamic, NOT RECORDED)
+   - Limited vision (120° FOV, 50m range, 15-60ms dynamic)
    - Weight-based tendencies (0.0-1.0 floats): hugsTouchline, findsSpace, forwardRunFrequency, etc.
    - Position discipline (0.0-1.0): Controls formation nudge strength (0.0 = free role, 1.0 = rigid)
    - Team instructions (0.0-1.0): tempo, width, pressingIntensity, defensiveLine
    - Goalkeeper instructions: distributeToBack, distributeToFlanks, sweeper, commandsArea
    - Dynamic systems: Physics 10-50ms, AI 30-200ms (per-player instances)
+   - Deterministic AI using seeded PRNG
 
 9. **[FORMATIONS.md](./docs/FORMATIONS.md)** - Formation system architecture
    - Normalized team-relative space (-1 to 1 coordinates)
@@ -130,21 +130,20 @@ npm run lint      # Check code quality and style
 
 ### Advanced Features
 
-11. **[REPLAY.md](./docs/REPLAY.md)** - Visual replay system with delta encoding
-    - Delta encoding: Base snapshots (30s) + Highlight snapshots (events) with msOffset chain (UINT8)
-    - Ball snapshots: ~1.4 KB/sec (5-20ms variable intervals)
-    - Player snapshots: ~17.6 KB/sec (10-50ms variable intervals)
-    - Vision NOT RECORDED, AI decisions NOT RECORDED
-    - File size: ~130 MB uncompressed, ~65-90 MB compressed for 90-min match
-    - Visual reproduction ONLY (NOT deterministic simulation replay)
-    - 1st-person perspective playback (limited by vision system capabilities)
-    - Heatmaps, pass networks, tactical analysis
+11. **[REPLAY.md](./docs/REPLAY.md)** - Deterministic replay system
+    - Perfect replay by re-running simulation from same seed
+    - Stores: Match seed, team data, match events, user inputs
+    - Does NOT store: Ball/player positions, AI decisions, vision data
+    - File size: < 1 MB per match (minimal metadata only)
+    - 100% deterministic reproduction from seed
+    - Supports accelerated playback (re-simulate at 10×, 100× speed)
+    - Tactical analysis, heatmaps from replayed simulation
 
-12. **[2D_VS_3D.md](./docs/2D_VS_3D.md)** - Rendering modes with variable interval interpolation
+12. **[2D_VS_3D.md](./docs/2D_VS_3D.md)** - Rendering modes
     - 2D orthographic view (top-down tactical)
     - 3D perspective view (realistic depth)
-    - Interpolation formulas (Lerp/Slerp between snapshots with variable deltas)
-    - Display framerate independence (viewer handles variable simulation intervals)
+    - Renderer reads simulation state for display
+    - Display framerate independence (simulation deterministic regardless of FPS)
 
 ---
 
@@ -178,17 +177,17 @@ npm run lint      # Check code quality and style
 - **State Updates**: AI receives updates ONLY when tactics/phase/instructions change
 - **Future**: May utilize Web Workers/Worker Threads for parallelization as simulation complexity grows
 
-### Viewer Separation
+### Renderer Separation
 
 ```
-Simulation (Dynamic Intervals) ──Stream──> Viewer (Variable Framerate)
-      NO FEEDBACK LOOP                      Variable Interval Interpolation
+Simulation (Deterministic) ─Read State─> Renderer (Variable Framerate)
+      NO FEEDBACK LOOP                    Interpolates for Display
 ```
 
-- Same viewer for live simulation AND replay files
-- Handles variable snapshot intervals seamlessly (ball 5-20ms, players 10-50ms)
-- Multiple perspectives (broadcast, tactical, 1st-person)
-- Simulation can run faster than real-time (5×, 10× speed)
+- Renderer reads current simulation state without affecting it
+- Simulation runs deterministically regardless of display framerate
+- Multiple renderers can display same simulation simultaneously
+- Simulation can run faster than real-time (5×, 10× speed) or headless
 
 ### Ball Physics
 
@@ -197,6 +196,7 @@ Simulation (Dynamic Intervals) ──Stream──> Viewer (Variable Framerate)
 - **Magnus Effect**: MANDATORY spin-induced curve (F = C_L × (ω × v))
 - **Spin**: 5-100+ rad/s (pass, shot, curve shot)
 - **Dynamic Updates**: 5-20ms intervals based on speed (30-50% fewer updates vs fixed 10ms timesteps)
+- **Deterministic**: Uses seeded PRNG for reproducible physics
 
 ### Team Phases
 
@@ -206,14 +206,14 @@ Simulation (Dynamic Intervals) ──Stream──> Viewer (Variable Framerate)
 | **Defending** | Opponent has possession | Drop back, close spaces | Out-of-possession (e.g., 4-5-1 Defend) |
 | **Contesting** | Ball is loose | Compete for possession | Maintain current |
 
-### Replay System (Visual ONLY)
+### Replay System (100% Deterministic)
 
-- **File Size**: ~65-90 MB compressed per 90-minute match (~130 MB uncompressed)
-- **Delta Encoding**: Base snapshots (30s) + Highlight snapshots (events) with msOffset chain (UINT8)
-- **What Gets Recorded**: Ball/player positions, velocities, orientations at variable intervals
-- **What Does NOT Get Recorded**: AI decisions, vision snapshots, event scheduler state, update intervals
-- **Features**: Time-travel, 1st-person perspective (limited by vision system), heatmaps
-- **Visual Reproduction ONLY**: NOT deterministic simulation replay
+- **File Size**: < 1 MB per match (seed + events only)
+- **Storage**: Match seed, team data, match events, user inputs
+- **NOT Stored**: Ball/player positions, AI decisions, vision data
+- **Replay Method**: Re-run simulation from same seed
+- **Features**: Perfect reproduction, accelerated playback, time-travel, tactical analysis
+- **Deterministic**: IDENTICAL results from same seed every time
 
 ---
 
@@ -222,6 +222,7 @@ Simulation (Dynamic Intervals) ──Stream──> Viewer (Variable Framerate)
 ### Core Technologies
 
 - **JavaScript (ES6+)** and **TypeScript 5.x**: JavaScript for existing code and Vue components, TypeScript preferred for new modules and utilities
+- **Seeded PRNG**: Deterministic random number generation for 100% reproducible simulations
 - **Modular Architecture**: Support for future parallelization via Web Workers/Worker Threads
 - **Three.js r180 (WebGPU)**: 3D rendering with fallback to WebGL2
 - **HTML Canvas 2D**: 2D tactical views
@@ -251,14 +252,13 @@ match-sim/
 │   ├── COORDINATES.md       # Dual coordinate system
 │   ├── EVENT_SCHEDULER.md   # Dynamic event scheduling (min-heap priority queue)
 │   ├── WORKERS.md           # Per-player AI architecture
-│   ├── VIEWER.md            # Viewer/simulation separation (variable interval handling)
 │   ├── BALL.md              # Ball physics (dynamic 5-20ms updates)
 │   ├── FIELD.md             # Field dimensions
 │   ├── PLAYERS.md           # Player system (weight-based tendencies, dynamic updates)
 │   ├── FORMATIONS.md        # Formation system (position discipline 0.0-1.0)
 │   ├── MATCH.md             # Match flow, team phases
-│   ├── REPLAY.md            # Visual replay system (delta encoding, dual snapshots)
-│   ├── 2D_VS_3D.md          # Rendering modes (variable interval interpolation)
+│   ├── REPLAY.md            # Deterministic replay system (seed-based reproduction)
+│   ├── 2D_VS_3D.md          # Rendering modes
 │   ├── GOALKEEPERS.md       # Goalkeeper AI (TBD)
 │   ├── OUTFIELD.md          # Outfield player AI (TBD)
 │   └── TACTICS.md           # Team tactics (TBD)

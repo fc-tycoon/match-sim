@@ -2,14 +2,14 @@
 
 ## Introduction
 
-This document provides a high-level overview of the **FC Tycoon Match Simulation** architecture. The match simulator is a browser-based football/soccer match engine with realistic physics, AI-driven players, and comprehensive replay capabilities.
+This document provides a high-level overview of the **FC Tycoon Match Simulation** architecture. The match simulator is a browser-based football/soccer match engine with realistic physics, AI-driven players, and deterministic replay capabilities.
 
 **Key Design Goals**:
-- **NOT Deterministic**: Visual replay ONLY (positions/physics), NOT AI decisions/vision (see `REPLAY.md`)
+- **100% Deterministic**: Fully deterministic simulation using seeded PRNG for perfect replay capability
 - **Frame-Rate Independent**: Dynamic event scheduling for physics/AI, variable display framerate
 - **Scalable**: Modular AI architecture supporting future parallelization
 - **Realistic**: Authentic football physics, tactics, and player behavior
-- **Replayable**: Visual match replay with 1st-person perspective support (NOT deterministic simulation replay)
+- **Replayable**: Perfect match replay by re-running simulation from seed (minimal file size)
 
 ---
 
@@ -23,9 +23,10 @@ This document provides a high-level overview of the **FC Tycoon Match Simulation
 │  │  - Ball Physics: 5-20ms (~50-200 Hz, speed-based)         │  │
 │  │  - Player Physics: 10-50ms (~20-100 Hz, speed-based)      │  │
 │  │  - Player AI: 30-200ms (~5-33 Hz, attribute/context)      │  │
-│  │  - Vision: 15-60ms (~16.67-67 Hz, NOT RECORDED)           │  │
+│  │  - Vision: 15-60ms (~16.67-67 Hz)                          │  │
 │  │  - Head AI: 120-250ms (~4-8.33 Hz, awareness-based)       │  │
 │  │  - Head Physics: 20-50ms (~20-50 Hz, rotation-based)      │  │
+│  │  - Seeded PRNG: Deterministic random number generation    │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │         │              │              │              │          │
 │         │              │              ▼              │          │
@@ -39,29 +40,30 @@ This document provides a high-level overview of the **FC Tycoon Match Simulation
 │                        │                                        │
 │                        ▼                                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │          Match State History (Replay Data)                │  │
-│  │  - Ball snapshots (~50-200 Hz, 5-20ms intervals)          │  │
-│  │  - Player snapshots (~20-100 Hz, 10-50ms intervals)       │  │
-│  │  - Base snapshots (30s) + Highlight snapshots (events)    │  │
-│  │  - Delta encoding (msOffset chain)                        │  │
-│  │  - Vision NOT RECORDED (can reconstruct)                  │  │
-│  │  - AI Decisions NOT RECORDED (intentions, not outcomes)   │  │
+│  │      Match State (Deterministic, No Recording Needed)     │  │
+│  │  - Ball position, velocity, spin (physics simulation)     │  │
+│  │  - Player positions, velocities, orientations             │  │
+│  │  - AI decisions based on seeded PRNG                      │  │
+│  │  - Match events (goals, fouls, substitutions, etc.)       │  │
+│  │  - Replay: Re-run simulation from same seed               │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                        │                                        │
 │                        ▼                                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │       Snapshot Stream (to Viewer, Variable Intervals)     │  │
+│  │         Renderer (Real-Time Visualization Only)           │  │
+│  │  - Reads current match state each frame                   │  │
+│  │  - Interpolates for smooth display at variable FPS        │  │
+│  │  - No feedback to simulation (one-way rendering)          │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Viewer (Display Thread)                      │
+│                    Display (Variable Framerate)                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │        Display Loop (Variable Framerate 60-240 Hz)        │  │
-│  │  - Receive snapshots from simulation (variable intervals) │  │
+│  │  - Read current simulation state                          │  │
 │  │  - Interpolate positions/rotations (Lerp/Slerp)           │  │
-│  │  - Handle variable snapshot intervals (ball 5-20ms, etc.) │  │
 │  │  - Render 3D scene (Three.js WebGPU)                      │  │
 │  │  - Camera perspectives (Broadcast, Tactical, 1st-Person)  │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -127,15 +129,16 @@ All simulation components update at VARIABLE intervals based on speed/attributes
 - **Main Thread**: Event scheduler controls timing, owns match state, applies AI intentions
 - **22 Per-Player AI**: Persistent state (attributes/tendencies/instructions), return intentions
 - **Communication**: Method-based protocol (makeDecision, updateState)
-- **Intention-Based**: AI returns what player WANTS to do, game engine applies outcomes
+- **Intention-Based**: AI returns what player WANTS to do, game engine applies outcomes using seeded PRNG
 - **Configurable AI**: Teams can specify custom AI scripts (team-level + goalkeeper)
 - **State Updates**: AI receives updates only when tactics/phase/instructions change
+- **Deterministic**: All AI decisions use seeded PRNG for reproducible behavior
 
 **AI Responsibilities**:
 - **Per-Player AI** (30-200ms dynamic): Decision-making based on vision, formation, game state
 - **Ball Physics** (Main Thread, 5-20ms): Ball trajectory, Magnus effect, collisions
 - **Player Physics** (Main Thread, 10-50ms): Movement, acceleration, collision detection
-- **Vision System** (Main Thread, 15-60ms): Vision cone calculations (NOT RECORDED in replay)
+- **Vision System** (Main Thread, 15-60ms): Vision cone calculations
 - **Head Movement** (Main Thread, 120-250ms AI + 20-50ms physics): Head orientation
 
 **See**: [`WORKERS.md`](./WORKERS.md) for AI architecture details
@@ -144,23 +147,21 @@ All simulation components update at VARIABLE intervals based on speed/attributes
 
 ---
 
-### 4. Viewer/Simulation Separation
+### 4. Renderer/Simulation Separation
 
-Viewer is COMPLETELY separated from simulation:
+Renderer is COMPLETELY separated from simulation:
 
 ```
-Simulation (Dynamic Intervals) ──Stream──> Viewer (Variable Framerate)
-      NO FEEDBACK LOOP                      Interpolates Variable Intervals
+Simulation (Deterministic) ─Read State─> Renderer (Variable Framerate)
+      NO FEEDBACK LOOP                    Interpolates for Display
 ```
 
 **Benefits**:
-- Simulation updates at dynamic intervals independent of display framerate
-- Same viewer code for live simulation AND replay files
-- Multiple viewers can watch same simulation (broadcast, tactical, 1st-person)
-- Simulation can run faster than real-time (5×, 10× speed)
-- Viewer handles variable snapshot intervals seamlessly (ball 5-20ms, players 10-50ms)
-
-**See**: [`VIEWER.md`](./VIEWER.md) for viewer architecture
+- Simulation runs deterministically regardless of display framerate
+- Renderer simply reads current state without affecting simulation
+- Multiple renderers can display same simulation simultaneously (broadcast, tactical, 1st-person)
+- Simulation can run faster than real-time (5×, 10× speed) or headless (instant results)
+- Replay works by re-running simulation from same seed (no position data storage needed)
 
 ---
 
@@ -184,12 +185,13 @@ Ball physics includes:
 ### 6. Player AI System
 
 Players have:
-- **Limited Vision**: Vision cone (~120° FOV, ~50m range), 15-60ms updates (NOT RECORDED)
+- **Limited Vision**: Vision cone (~120° FOV, ~50m range), 15-60ms updates
 - **Fuzzy Perception**: Gaussian noise on perceived positions (distance-based)
 - **Phase-Based Behavior**: Attacking, Defending, Contesting phases
 - **Weight-Based Tendencies**: hugsTouchline, findsSpace, forwardRunFrequency (0.0-1.0 floats)
 - **Position Discipline**: 0.0 (free role) to 1.0 (rigid) - controls formation nudge strength
 - **Dynamic AI Decisions**: 30-200ms intervals (high awareness near ball = 30ms, low awareness far = 200ms)
+- **Deterministic Decisions**: All AI uses seeded PRNG for reproducible behavior
 
 **See**: [`PLAYERS.md`](./PLAYERS.md) for player attributes and AI interface
 
@@ -209,21 +211,30 @@ Formations use normalized team-relative space:
 
 ---
 
-### 8. Replay System with Delta Encoding
+### 8. Replay System with Deterministic Re-Simulation
 
-Visual match replay recorded for playback:
+Match replay achieved by re-running simulation from same seed:
 
-**What Gets Recorded**:
-- Ball positions/velocities (5-20ms variable intervals, ~50-200 Hz)
-- Player positions/velocities (10-50ms variable intervals, ~20-100 Hz)
-- Base snapshots (every 30 seconds, configurable)
-- Highlight snapshots (goals, shots, dangerous attacks)
-- Delta encoding with msOffset chain (UINT8, 0-255ms)
+**What Gets Stored**:
+- Match seed (PRNG seed for deterministic replay)
+- Team data (formations, tactics, player attributes)
+- Match events (goals, substitutions, tactical changes with timestamps)
+- User inputs (tactical changes, substitutions during match)
 
-**What Does NOT Get Recorded**:
-- AI decisions (intentions, not recorded in replay)
-- Vision snapshots (can reconstruct from player positions)
-- Event scheduler state (not needed for visual replay)
+**What Does NOT Get Stored**:
+- Ball positions/velocities (recalculated during replay)
+- Player positions/velocities (recalculated during replay)
+- AI decisions (reproduced from same seed)
+- Vision snapshots (recalculated during replay)
+
+**Replay Process**:
+- Load match seed + team data + events
+- Initialize simulation with same seed
+- Re-run simulation tick-by-tick (deterministic)
+- Apply stored events at exact timestamps
+- Render result in real-time or accelerated
+
+**File Size**: < 1 MB per match (seed + metadata + events only)
 - Update intervals (variable, not deterministic)
 
 **Replay Philosophy**: Visual replay ONLY - NOT deterministic simulation replay
@@ -303,42 +314,40 @@ Each team operates in one of three phases:
 4. Execute Event:
    - Ball Physics (Main Thread, 5-20ms): Update ball state
    - Player Physics (Main Thread, 10-50ms): Update player state
-   - Player AI (Main Thread, 30-200ms): Get intention, apply outcome
-   - Vision (Main Thread, 15-60ms): Update vision cone (NOT RECORDED)
+   - Player AI (Main Thread, 30-200ms): Get intention, apply outcome (uses seeded PRNG)
+   - Vision (Main Thread, 15-60ms): Update vision cone
    - Head AI (Main Thread, 120-250ms): Update head target
    - Head Physics (Main Thread, 20-50ms): Rotate head toward target
    ↓
 5. Schedule Next Event (Dynamic interval based on speed/attributes/context)
    ↓
-6. Record Snapshot (Variable intervals)
+6. Update Match State (Deterministic)
    ↓
-7. Stream to Viewer (Variable intervals)
+7. Renderer Reads State (If rendering enabled)
    ↓
-8. Record Snapshots → Match History (Variable intervals, base + highlight)
+8. Renderer Interpolates → Render Frame (60-240 Hz display)
    ↓
-9. Send Snapshot Stream → Viewer (Variable intervals)
-   ↓
-10. Viewer Interpolates → Render Frame (60-240 Hz display)
-   ↓
-11. Repeat (2-10) until match ends
+9. Repeat (2-8) until match ends
 ```
 
 ### Replay Flow
 
 ```
-1. Load Replay File (.fctr)
+1. Load Replay Data (seed + teams + events)
    ↓
-2. Validate (CRC32 checksum)
+2. Validate (match hash verification)
    ↓
-3. Find Base Snapshot (30s intervals) + Delta msOffset Chain
+3. Initialize Event Scheduler with Same Seed
    ↓
-4. Reconstruct Absolute Timestamps (sum msOffset values)
+4. Re-Run Simulation Tick-by-Tick (deterministic)
    ↓
-5. Get Snapshots (ball, players - NO vision/AI)
+5. Apply User Inputs at Stored Timestamps
    ↓
-6. Viewer Interpolates → Render Frame (handles variable intervals)
+6. Renderer Reads Current State (if rendering)
    ↓
-7. Repeat (3-6) at playback speed (1×, 2×, 5×, etc.)
+7. Renderer Interpolates → Render Frame
+   ↓
+8. Repeat (4-7) at playback speed (1×, 5×, 10×, 100×, or instant)
 ```
 
 ---
@@ -355,8 +364,7 @@ docs/
 ├── Core Systems/
 │   ├── COORDINATES.md     # Dual coordinate system (world + team-relative)
 │   ├── EVENT_SCHEDULER.md # Dynamic event scheduling (min-heap priority queue)
-│   ├── WORKERS.md         # 22 per-player AI workers, intention-based
-│   └── VIEWER.md          # Viewer/simulation separation, variable interval interpolation
+│   └── WORKERS.md         # 22 per-player AI, deterministic with seeded PRNG
 │
 ├── Game Components/
 │   ├── BALL.md            # Ball physics, Magnus effect, spin
@@ -366,8 +374,8 @@ docs/
 │   └── MATCH.md           # Match flow, team phases, scoring
 │
 ├── Advanced Features/
-│   ├── REPLAY.md          # Replay system, INT16 serialization
-│   ├── 2D_VS_3D.md        # Rendering modes, interpolation
+│   ├── REPLAY.md          # Deterministic replay system (seed-based)
+│   ├── 2D_VS_3D.md        # Rendering modes
 │   └── AI.md              # AI implementation guide (if exists)
 │
 └── Reference/
@@ -506,16 +514,16 @@ docs/
 
 ## Summary
 
-**FC Tycoon Match Simulation** is a visual replay-only, frame-rate independent football match engine with:
+**FC Tycoon Match Simulation** is a 100% deterministic, frame-rate independent football match engine with:
 
 - **Dual Coordinate Systems**: World space (physics) + Team-relative space (tactics)
 - **Dynamic Event Scheduling**: Ball 5-20ms, Players 10-50ms, AI 30-200ms (adaptive intervals)
-- **Per-Player AI**: Persistent state, intention-based returns, configurable scripts
-- **Viewer Separation**: Simulation → Stream → Viewer (no feedback loop, handles variable intervals)
-- **Realistic Physics**: Gravity, drag, Magnus effect (mandatory spin), dynamic updates
-- **AI System**: Limited vision (15-60ms, NOT RECORDED), weight-based tendencies (0.0-1.0), position discipline (0.0-1.0)
+- **Per-Player AI**: Persistent state, intention-based returns, deterministic with seeded PRNG
+- **Renderer Separation**: Simulation (deterministic) → Renderer reads state (no feedback loop)
+- **Realistic Physics**: Gravity, drag, Magnus effect (mandatory spin), deterministic outcomes
+- **AI System**: Limited vision (15-60ms), weight-based tendencies (0.0-1.0), position discipline (0.0-1.0)
 - **Formation System**: Normalized team-relative space (-1 to 1), position discipline controls formation nudge strength
-- **Replay System**: Delta encoding with dual snapshots (base 30s + event highlights), visual ONLY (~65-90 MB compressed per match)
+- **Replay System**: Seed-based deterministic replay (< 20 KB per match, 100% reproducible)
 - **Team Phases**: Attacking, Defending, Contesting with formation transitions
 
 **Future Enhancement**: AI computation may utilize Web Workers (browser) or Worker Threads (Node.js) for parallelization and context isolation as 3D simulation complexity evolves.

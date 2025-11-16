@@ -1,542 +1,468 @@
-# Match Stream and Replay System
+# Deterministic Replay System
 
 ## Overview
 
-The match stream records simulation state to JSON-serialized format during match execution, enabling:
-- **Live Match Playback**: View match as it happens, scrubbing back to any previous point
-- **Post-Match Replay**: Load completed matches from database for analysis
-- **Downloadable Stream**: Export match stream as JSON file at any point (live or post-match)
-- **Event Navigation**: Instantly jump to play resumption events (kickoff, throw-ins, free kicks, etc.)
-- **Tactical Analysis**: Heatmaps, statistics, player tracking from recorded positions
+The match replay system achieves **100% deterministic reproduction** of matches using a seeded PRNG (Pseudo-Random Number Generator). This enables perfect replay functionality with minimal file storage.
+
+**Key Features**:
+- **Perfect Reproduction**: Identical match results from same seed every time
+- **Minimal File Size**: < 1 MB per match (seed + events only)
+- **No Position Storage**: Ball/player positions recalculated during replay
+- **Accelerated Playback**: Re-simulate at 10×, 100×, or instant speed
+- **Tactical Analysis**: Heatmaps, statistics generated from replayed simulation
+- **Browser & Backend**: Works in both browser and Node.js (instant results)
 
 **CRITICAL**: 
-- Stream stores **POSITIONS and PHYSICS only** - NOT AI decisions or vision snapshots
-- Visual replay ONLY - NOT deterministic simulation replay
-- INT16 serialization with 1cm resolution for efficient storage
-- Event-based snapshots: Play resumption events (kickoff, goal kicks, corners, etc.) + optional periodic snapshots (30s during continuous play)
-- Entire match stored as single JSON blob in database (stream + metadata + statistics)
+- Match engine is **100% deterministic** using seeded PRNG
+- Replay works by **re-running simulation** from same seed
+- NO position/velocity data stored - everything recalculated
+- Identical random seed + inputs = identical match outcome
 
 ---
 
-## Snapshot Architecture
+## Deterministic Architecture
 
-### Event-Based Snapshot System
+### Seeded PRNG
 
-The match stream uses **event snapshots** triggered on play resumption events:
+All randomness in the match engine uses a **seeded PRNG** (SplitMix32/PCG32):
 
-**Event Snapshots** (Play Resumption Triggers):
-- **Kickoff**: Match start, start of second half, after goals
-- **Goal Kicks**: Goalkeeper restarts play after ball crosses goal line
-- **Throw-Ins**: Ball out of bounds on touchline
-- **Corners**: Ball crosses goal line off defending team
-- **Free Kicks**: After fouls, offsides
-- **Penalties**: Penalty kick awarded
-- **Drop Balls**: Referee stops play and restarts with drop ball
-- Storage: Full state snapshot + absolute match timestamp (ms since match start)
-- Purpose: Natural replay navigation points, efficient delta encoding
-- Full state: Ball + all 22 players + referees (if present)
+**Seed Properties**:
+- 32-bit unsigned integer (0 to 4,294,967,295)
+- Same seed = same random sequence
+- Different seeds = different random sequences
+- Can be generated from match ID, timestamp, or user input
 
-**Optional Periodic Snapshots** (During Continuous Play):
-- Triggered: Every 30 seconds *relative to last event snapshot* (configurable)
-- Storage: UINT16 for relative offset (supports up to 65,535ms = ~65 seconds from last event)
-- Purpose: Prevents excessive delta chain length during long periods of uninterrupted play
-- Still stores absolute match timestamp for navigation
-- Full state: Ball + all 22 players
+**PRNG Usage**:
+- AI decision-making (pass vs. shot, tackle timing)
+- Player attribute randomness (shot accuracy, pass power)
+- Physics outcomes (ball bounce angles, deflections)
+- Match events (injury timing, referee decisions)
 
-**Why Event-Based?**
-- Natural replay segments (match pauses at these moments)
-- Efficient delta encoding (most changes occur between play resumptions)
-- Intuitive navigation (jump to "throw-in at 23:45" instead of arbitrary timestamp)
-- Reduced snapshot overhead (~20-40 per half vs. 90 fixed 30s snapshots)
+**Deterministic Guarantee**: Given identical:
+- Match seed
+- Team rosters (players, attributes, tendencies)
+- Formations and tactics
+- User inputs (substitutions, tactical changes with timestamps)
 
-### Delta Encoding Between Snapshots
-
-Between snapshots, only CHANGES are recorded using delta events:
-
-**Delta Event Structure** (stored sequentially in event stream):
-- `msOffset` (UINT8): 0-255ms since PREVIOUS event (NOT since snapshot)
-- `entityId` (UINT8): 0-21 = player ID, 255 = ball
-- `updateType` (UINT8): Bitmask flags (0x01=pos, 0x02=vel, 0x04=bodyFacing, 0x08=headYaw, 0x10=headPitch)
-- `data` (INT16 array): Only fields marked in updateType bitmask
-
-**Reconstruction Process**:
-Absolute tick time calculated by sequential summation of msOffset values from snapshot's baseTick through event index.
-
-**Why msOffset Chain?**
-- No redundant `tickOffset` field (saves 2 bytes per event)
-- UINT8 (0-255ms) sufficient - events never >255ms apart
-- Simple sequential summation to reconstruct absolute time
-
-**Replay Configuration**:
-- Periodic snapshot interval: 30 seconds (relative to last event snapshot, configurable)
-- Max snapshot interval: 65535ms (UINT16 limit, ~65 seconds max relative offset)
-- Event triggers: kickoff, goal_kick, throw_in, corner, free_kick, penalty, drop_ball, goal, half_time, full_time
+The simulation produces **IDENTICAL** results every time.
 
 ---
 
-## Recording Architecture
+## What Gets Stored
 
-### Dynamic Recording Rates
+### Match Metadata
 
-Replay records entity updates at VARIABLE frequencies (not fixed timesteps):
+**Required Data** (stored in database):
+- **Match Seed** (4 bytes): UINT32 seed for PRNG
+- **Match ID**: Unique identifier
+- **Date/Time**: ISO 8601 timestamp
+- **Competition**: League/tournament name
+- **Venue**: Stadium name
 
-| Component | Update Range | Average | Data Size (per update) |
-|-----------|--------------|---------|------------------------|
-| **Ball** | 5-20ms | ~13ms (~77 Hz) | 18 bytes |
-| **Players** (×22) | 10-50ms | ~25ms (~40 Hz) | 20 bytes each = 440 bytes |
-| **Vision** | NOT RECORDED | N/A | (Too large, can reconstruct) |
-| **AI Decisions** | NOT RECORDED | N/A | (Not needed for visual replay) |
+### Team Data
 
-**Total Recording Rate** (estimated):
-- **Ball**: ~77 updates/sec × 18 bytes = ~1.4 KB/sec
-- **Players**: ~40 updates/sec × 440 bytes = ~17.6 KB/sec
-- **Delta Overhead**: ~5 bytes per event × ~1000 events/sec = ~5 KB/sec
-- **Total**: ~24 KB/sec = **~1.44 MB/minute** = **~130 MB for 90-minute match**
-
-**Event Snapshots**: ~40-80 per match (kickoffs, throw-ins, corners, goal kicks, etc.) × ~500 bytes = ~20-40 KB
-**Periodic Snapshots**: ~0-60 per match (only during long uninterrupted play) × ~500 bytes = ~0-30 KB
-
-**Compression**: Deflate/gzip reduces by ~50-70% = **~65-90 MB per match**
-
----
-
-## INT16 Serialization
-
-### Why INT16?
-
-**INT16** (16-bit signed integer) provides:
-- **Range**: -32,768 to 32,767
-- **Precision**: 1 value = 1 centimeter (0.01 meters)
-- **Field Coverage**: ±327.68 meters (sufficient for 120m × 90m field)
-- **Efficiency**: 2 bytes per coordinate (vs. 4 bytes for float32, 8 bytes for float64)
-
-### Conversion Functions
-
-**World Coordinates → INT16**: `Math.round(worldCoord * 100)` - converts meters to centimeters (e.g., 52.75m → 5275)
-
-**INT16 → World Coordinates**: `int16Coord / 100` - converts centimeters back to meters (e.g., 5275 → 52.75m)
-
-**Precision**: 1cm resolution is **more than sufficient** for replay:
-- Human eye cannot distinguish 1cm differences at typical viewing distances
-- Player movement interpolated smoothly between updates
-- Ball trajectory imperceptible quantization
-
----
-
-## Ball Snapshot Format
-
-### Ball State (18 bytes per snapshot)
-
-Ball snapshots recorded at variable rate (5-20ms updates) include:
-
-- **Position (6 bytes)**: X, Y, Z coordinates in centimeters (Int16 each)
-- **Velocity (6 bytes)**: X, Y, Z velocity in cm/s (Int16 each, ±327 m/s range)
-- **Spin (6 bytes)**: X, Y, Z angular velocity in rad/s × 100 (Int16 each, ±327 rad/s range)
-
-**Ranges**:
-- Velocity: ±327 m/s (exceeds realistic ball speeds of 0-50 m/s)
-- Spin: ±327 rad/s (covers realistic spin of 0-100 rad/s)
-
-**Total**: 18 bytes per ball update
-
-### Ball Snapshot Example
-
-Ball at position (52.75m, 0.50m, -10.25m) with velocity (5.0, 2.5, -3.0) m/s and spin (2, 10, -1) rad/s:
-- Position: `{posX: 5275, posY: 50, posZ: -1025}` (meters × 100)
-- Velocity: `{velX: 500, velY: 250, velZ: -300}` (m/s × 100)
-- Spin: `{spinX: 200, spinY: 1000, spinZ: -100}` (rad/s × 100)
-
----
-
-## Player Snapshot Format
-
-### Player State (20 bytes per player × 22 players = 440 bytes per snapshot)
-
-Player snapshots recorded at variable rate (10-50ms updates) include:
-
-- **Position (6 bytes)**: X, Y, Z coordinates in centimeters (Int16 each)
-- **Velocity (4 bytes)**: X, Z velocity in cm/s (Int16 each) - Y omitted (usually ~0)
-- **Body Facing (2 bytes)**: Rotation 0-65535 mapped to 0-2π radians (Uint16)
-- **Head Orientation (4 bytes)**: Yaw (0-2π radians, Uint16) + Pitch (-π/2 to π/2 × 1000, Int16)
-- **Animation State (1 byte)**: Compact representation (idle=0, walk=1, run=2, sprint=3, kick=4, etc.)
-- **Flags (1 byte)**: Bit-packed boolean fields (hasBall, isGoalkeeper, etc.)
-
-**Optimizations**:
-- **Velocity Y Omitted**: Players usually on ground (Y velocity ~0 for most updates)
-- **Head Orientation**: Yaw + pitch only (no roll - players don't roll heads)
-- **Animation State**: Single byte encoding for common animations
-- **Flags**: Bit-packed boolean fields
-
-**Total Size**: 20 bytes per player
-
-**Recording Rate**: Variable (10-50ms per player update) × 20 bytes
-
----
-
-## Event Snapshot Structure
-
-### Complete Match State Snapshot
-
-Taken at play resumption events (kickoff, throw-ins, corners, etc.):
-
-**Snapshot Components**:
-- **Event Type**: String identifier ('kickoff', 'goal_kick', 'throw_in', 'corner', etc.)
-- **Base Tick (4 bytes)**: Absolute tick time (ms since match start)
-- **Array Offset (4 bytes)**: Offset in delta event stream array (for instant seek)
-
-**Ball State (18 bytes)**:
-- Position (X, Y, Z) + Velocity (X, Y, Z) + Spin (X, Y, Z)
-
-**All 22 Players (440 bytes total)**:
-- Each player: Position (6 bytes) + Velocity (4 bytes) + Orientation (6 bytes) + Animation/Flags (2 bytes)
-
-**Match Metadata (50-100 bytes)**:
-- Score: Team 1, Team 2 scores (1 byte each)
-- Match Time: Clock in milliseconds (4 bytes)
-- Phase: Current phase (first half, second half, etc.) (1 byte)
-- Possession: Team with possession (1 byte)
-
-**Event-Specific Metadata**:
-- Event data fields (executing player, position, etc.) - varies by event type
-- Examples: Player taking throw-in/free kick (Uint8), event position coordinates (Int16 pair)
-
-**Total Event Snapshot Size**: ~550-650 bytes
-
-**Usage**: Jump to any event snapshot for instant playback - no delta scanning required. Viewer retrieves snapshot by index and starts reconstruction from that point.
-
-**Game Events** (goals, cards, substitutions, etc.):
-
-Game events recorded with fixed header:
-- **Timestamp (4 bytes)**: Milliseconds since match start
-- **Event Type (1 byte)**: 0=pass, 1=shot, 2=tackle, 3=foul, etc.
-- **Player ID (1 byte)**: 0-21, player who triggered event
-- **Event Data (variable)**: Event-specific data
-
-**Common Events**:
-- **Pass**: Player ID, target player ID, pass accuracy
-- **Shot**: Player ID, shot power, shot accuracy, on target
-- **Tackle**: Player ID, success/failure
-- **Foul**: Player ID, severity, card (yellow/red/none)
-- **Goal**: Player ID, assist player ID, goal type (header, volley, etc.)
-- **Substitution**: Player out ID, player in ID
-- **Offside**: Player ID
-- **Ball Out**: Out type (goal kick, corner, throw-in)
-
-**Event Data Size**: ~10-30 bytes per event (varies by event type)
-
-**Event Frequency**: ~100-300 events per match → **~1-9 KB total per match** (negligible)
-
----
-
-## Match Stream JSON Format
-
-### Complete Match Stream Structure
-
-The entire match is serialized to a single JSON object stored in the database with the following structure:
-
-**Match Metadata**:
-- Match ID, date (ISO 8601 timestamp), competition, venue
-
-**Team Information** (both teams):
+**Team Rosters** (both teams):
 - Team ID, name, formation (e.g., "4-3-3")
-- Player roster (11-18 players per squad):
-  - Player ID, number, name, position
-  - Attributes (pace, passing, shooting, etc.)
-  - Tendencies (hugsTouchline, findsSpace, etc.)
+- Starting XI player IDs (11 players)
+- Substitutes player IDs (7 players)
 
-**Match Stream Data**:
-- Event snapshots: Kickoffs, throw-ins, corners, etc. (~40-80 snapshots per match)
-  - Each snapshot: eventType, baseTick, ball state, all player positions, metadata, eventData, arrayOffset
-- Periodic snapshots: Optional snapshots during long continuous play (~0-60 snapshots per match)
-  - Each snapshot: baseTick, ball state, all player positions, metadata, relativeOffset
-- Delta events: Position updates between snapshots (~500,000-1,000,000 events per match)
-  - Each event: msOffset, entityId, updateType, data
+**Player Attributes** (per player):
+- Player ID, number, name, position
+- Attributes (pace, passing, shooting, defending, etc.)
+- Tendencies (hugsTouchline, findsSpace, forwardRunFrequency, etc.)
+- Position discipline (0.0-1.0)
 
-**Match Events** (goals, cards, substitutions):
-- Event type (goal, yellow_card, substitution, etc.)
-- Timestamp (match time in ms)
-- Player ID, team ID
-- Event-specific data
+**Team Instructions**:
+- Tempo, width, pressingIntensity, defensiveLine (0.0-1.0 floats)
+- Goalkeeper instructions (distributeToBack, distributeToFlanks, sweeper, commandsArea)
 
-**Match Statistics**:
-- Possession (team percentages)
+### Match Events
+
+**User Inputs** (tactical changes during match):
+- **Substitutions**: Timestamp, player out ID, player in ID
+- **Tactical Changes**: Timestamp, formation change, instruction changes
+- **Formation Transitions**: Timestamp, new formation ID
+
+**Match Events** (recorded during simulation):
+- **Goals**: Timestamp, player ID, assist player ID, goal type
+- **Cards**: Timestamp, player ID, card type (yellow/red)
+- **Injuries**: Timestamp, player ID, injury duration
+- **Offsides**: Timestamp, player ID
+- **Fouls**: Timestamp, player ID, severity
+
+**Event Size**: ~10-30 bytes per event × ~100-300 events = **~1-9 KB per match**
+
+### Match Statistics
+
+**Final Statistics** (stored for quick access):
+- Possession percentages (team 1, team 2)
 - Shots, shots on target
-- Passes, pass accuracy (percentage)
+- Passes, pass accuracy
 - Corners, fouls, offsides
-- Additional statistics
+- Final score
 
-**Match Result**:
-- Final score (team 1, team 2)
-- Winner (team ID or 'draw')
-- Duration (total match time in ms)
-
-**Total JSON Size** (uncompressed):
-- Metadata + teams: ~10-20 KB
-- Event snapshots: ~20-50 KB
-- Periodic snapshots: ~0-30 KB
-- Delta events: ~125-130 MB
-- Match events: ~5-10 KB
-- Statistics: ~1-2 KB
-- **Total**: ~130-135 MB uncompressed
-- **Compressed** (gzip): ~65-90 MB
-
-### Downloadable Stream
-
-**Critical Feature**: Match stream can be downloaded at ANY point during live match or post-match.
-
-**Implementation**: Serialize stream to JSON, create blob with `new Blob([json], { type: 'application/json' })`, trigger browser download with filename `match-{matchId}-{timestamp}.json`.
-
-**Use Cases**:
-- Export match for sharing with other users
-- Backup match data during live play
-- Archive completed matches outside database
-- Import matches into analysis tools
-- Share highlight reels with community
+**Statistics Size**: ~1-2 KB
 
 ---
 
-## Stream Playback
+## What Does NOT Get Stored
 
-### Time-Travel Playback
+**NO Position Data**:
+- ❌ Ball positions/velocities
+- ❌ Player positions/velocities
+- ❌ Player orientations (body/head facing)
 
-**Seek Algorithm**:
-1. Find nearest snapshot BEFORE target timestamp (compare event snapshots and periodic snapshots)
-2. Use whichever snapshot is closest to target (prefer periodic if closer)
-3. Start with snapshot state (ball + 22 players)
-4. Apply delta events sequentially from snapshot.arrayOffset until reaching target timestamp
-5. Accumulate msOffset values: `currentTick = snapshot.baseTick + sum(event[i].msOffset)`
-6. Stop when `currentTick > targetTimestamp`
+**NO Physics Data**:
+- ❌ Ball spin values
+- ❌ Collision states
+- ❌ Animation states
 
-**Interpolation Between Updates**:
-- If seeking between delta events, interpolate (Lerp positions, Slerp rotations)
-- Never extrapolate (always use past events)
+**NO AI Data**:
+- ❌ AI decision history
+- ❌ Vision snapshots
+- ❌ Perception data
 
-### Playback Speeds
-
-Replay supports variable playback speeds: **0.25× (slow motion), 0.5× (half speed), 1.0× (real-time), 2.0× (fast), 5.0× (very fast)**
-
-**Implementation**:
-- Viewer interpolates snapshots at display framerate (60/144 Hz)
-- Playback speed controls which snapshots are used for interpolation
-- Slow motion uses more snapshots (smoother), fast uses fewer (jumpier)
+**Why Not Store These?**:
+- Recalculated during replay from seed
+- Storing would increase file size to ~65-130 MB per match
+- Deterministic engine guarantees identical recalculation
 
 ---
 
-## Live vs. Replay Mode
+## Replay Process
 
-### Stream Position Tracking
+### Loading a Replay
 
-The viewer tracks its position in the match stream to determine mode.
+**Load Process**:
+1. Load match metadata from database (seed, teams, events)
+2. Initialize match engine with **same seed**
+3. Load team rosters, attributes, tendencies
+4. Load formations and team instructions
+5. Load user inputs (substitutions, tactical changes with timestamps)
+6. Load match events for verification (optional)
 
-**Position Tracking**:
-- Viewer maintains: `currentEventIndex`, `currentDeltaIndex`, `isLive` flag
-- Updates position by scanning delta events from current event snapshot
-- Sets `isLive = true` when `currentDeltaIndex === deltaEvents.length - 1` (at most recent event)
+### Re-Running Simulation
 
-**Live Mode** (isLive = true):
-- Viewer is at most recent delta event in stream
-- Can view player vision cones (queried from match engine, not from stream)
-- Can make tactical changes, substitutions, shouts → sends commands to match engine
-- Match engine processes commands, continues writing new delta events to stream
-- Viewer automatically advances currentDeltaIndex as new events arrive
+**Replay Execution**:
+1. Initialize event scheduler with match seed
+2. Set up teams with identical formations/tactics/instructions
+3. Run simulation tick-by-tick (1 tick = 1 ms)
+4. Apply user inputs at stored timestamps:
+   - Substitutions at exact tick
+   - Tactical changes at exact tick
+   - Formation transitions at exact tick
+5. Render or analyze as simulation progresses
 
-**Replay Mode** (isLive = false):
-- Viewer is behind current stream position (scrubbed back in time)
-- Read-only playback of recorded stream
-- Cannot view vision cones (not in stream)
-- Cannot make tactical changes or substitutions
-- When playback resumes forward and reaches most recent event → becomes live mode
+**Deterministic Guarantee**:
+- Same seed → same PRNG sequence
+- Same user inputs → same outcomes
+- Result: **IDENTICAL match every time**
 
-### Vision Cone Display (Live Mode Only)
+### Playback Modes
 
-**CRITICAL**: Vision cones are NOT stored in match stream - only available in live mode via match engine query.
+**Real-Time Playback** (1× speed):
+- RealTimeScheduler at speed = 1.0
+- Render every frame for visual display
+- Identical to watching live match
 
-**Live Mode Query**: In live mode, viewer calls `matchEngine.getPlayerVision(playerId)` to retrieve real-time vision data. If not live, vision cone display is unavailable (returns early with warning).
+**Accelerated Playback** (5×, 10×, 100× speed):
+- RealTimeScheduler at speed = 5.0, 10.0, 100.0
+- Render every N frames (skip intermediate frames)
+- Useful for quick replay or analysis
 
-**Live Mode Features**:
-- Click player → show vision cone overlay
-- Show visible players/ball within cone
-- Update vision cone as head orientation changes
-- Vision data queried in real-time, NOT from stream
-
-**Replay Mode Limitations**:
-- Vision cones NOT available (not stored in stream)
-- Can reconstruct approximate vision from head orientation + positions
-- Viewer can estimate "what player could see" but not exact vision data
-
----
-
-## 1st-Person Camera
-
-**CRITICAL**: Stream enables **viewing match through player's eyes** using recorded head orientation.
-
-### 1st-Person Camera Setup
-
-**Camera Positioning**:
-- **Position**: Player eye height = `position.y + 1.75m` (typical human eye level)
-- **Rotation**: Head yaw converted from UINT16: `headYaw / 65535 * 2π`, head pitch from INT16: `headPitch / 1000`
-- **FOV**: ~90° horizontal (realistic human field of view)
-
-**What Player "Sees"**:
-- **Camera Position**: Player's eye position (posY + 1.75m)
-- **Camera Orientation**: Head yaw/pitch from stream
-- **Limited FOV**: ~90° horizontal (realistic human FOV)
-- **No Vision Cone Culling**: Full scene rendered (vision cone not in stream)
-- **Approximate View**: Can estimate what player could see, but not exact vision data (live mode only)
-
-**Use Cases**:
-- **Goal Celebrations**: See goal from striker's perspective
-- **Save Replays**: See crucial save from goalkeeper's POV
-- **Tactical Analysis**: Understand player's decision-making context
-- **Highlight Reels**: Create "player cam" compilation videos
+**Instant Results** (headless):
+- HeadlessScheduler.run() to end
+- No rendering, maximum CPU speed
+- Used for post-match analysis, statistics generation
+- Typical duration: ~1-5 seconds for 90-minute match
 
 ---
 
-## Heatmap Generation
+## Tactical Analysis
 
-### Position Heatmap
+### Heatmap Generation
 
-**Generation Algorithm**:
-1. Initialize 2D grid (default 1.0m resolution)
-2. For each player snapshot: Convert INT16 position to world coordinates
-3. Quantize to grid cells: `gridX = floor(x / resolution)`, `gridZ = floor(z / resolution)`
-4. Increment cell count for each visit
-5. Return grid map with visit counts
+**Process**:
+1. Re-run simulation in headless mode
+2. Track player positions every N ticks (e.g., every 1000 ticks = 1 second)
+3. Quantize positions to grid cells (1.0m resolution)
+4. Increment cell visit counts
+5. Generate heatmap visualization
 
-**Visualization**:
+**Output**:
+- 2D grid with visit counts per cell
 - Color gradient (blue = low, red = high)
-- Overlay on field 2D view
-- Shows player positioning tendencies
+- Overlay on field view
 
 ### Pass Network
 
-**Generation Algorithm**:
-1. Filter match events for PASS events
-2. Extract passer ID and receiver ID from event data
-3. Create edge key: `${fromId}->${toId}`
-4. Increment pass count for each edge
-5. Return network map with pass counts per edge
+**Process**:
+1. Load match events from database (or JSON)
+2. Filter for PASS events
+3. Extract passer ID and receiver ID
+4. Count pass frequency between player pairs
+5. Build network graph
 
-**Visualization**:
+**Output**:
 - Nodes = players (positioned at average location)
 - Edges = passes (thickness = pass count)
 - Shows team chemistry and passing patterns
 
-### Pass Network
+### Custom Statistics
 
-Generate pass network from match events by:
-- Filtering match events for PASS event types
-- Extracting from/to player IDs
-- Counting pass frequency between player pairs
-- Building network map of player connections
+**Process**:
+1. Re-run simulation with custom event listeners
+2. Track specific events (tackles, interceptions, key passes)
+3. Calculate custom metrics during replay
+4. Generate reports, charts, visualizations
 
-**Visualization**:
-- Nodes = players (positioned at average location)
-- Edges = passes (thickness = pass count)
-- Shows team chemistry and passing patterns
+**Examples**:
+- Distance covered per player
+- Sprint count and duration
+- Pass completion rate by field zone
+- Defensive actions per phase
+- Shot locations and outcomes
+
+---
+
+## File Size Comparison
+
+### Deterministic Replay (New System)
+
+**Storage Requirements**:
+- Match seed: 4 bytes
+- Match metadata: ~500 bytes
+- Team rosters: ~2 KB (2 teams × ~1 KB)
+- Player attributes: ~10 KB (22 players × ~450 bytes)
+- Match events: ~1-9 KB (~100-300 events)
+- Statistics: ~1-2 KB
+- **Total**: **< 20 KB per match** (uncompressed)
+
+**With Compression**: ~10-15 KB per match
+
+### Old Position-Based System (Previous Concept)
+
+**Storage Requirements** (for comparison):
+- Ball position snapshots: ~1.4 KB/sec × 5400 sec = ~7.6 MB
+- Player position snapshots: ~17.6 KB/sec × 5400 sec = ~95 MB
+- Event snapshots: ~40-80 KB
+- Delta events: ~2.5-5 MB
+- Metadata: ~15 KB
+- **Total**: **~130 MB per match** (uncompressed)
+- **Compressed**: ~65-90 MB per match
+
+### Savings
+
+**File Size Reduction**: 
+- **Uncompressed**: 130 MB → 20 KB = **~6,500× smaller**
+- **Compressed**: 70 MB → 15 KB = **~4,700× smaller**
+
+**Storage Benefits**:
+- Store **1,000 matches** in ~15-20 MB (vs. 65-90 GB)
+- Store **10,000 matches** in ~150-200 MB (vs. 650-900 GB)
+- Easily share matches (< 20 KB file vs. 70 MB file)
+
+---
+
+## Replay Verification
+
+### Match Hash
+
+**Verification Process**:
+1. After simulation completes, compute match hash
+2. Hash includes final score, key events, statistics
+3. Store hash with match metadata
+4. On replay, compute hash again and compare
+5. If mismatch, flag as corrupted or version incompatibility
+
+**Hash Algorithm**: MD5 or XXHash of serialized match result
+
+### Version Compatibility
+
+**Version Field**: `replayVersion: "1.0.0"`
+
+**Compatibility Check**:
+1. Load replay version from database
+2. Compare with current engine version
+3. If incompatible, warn user or attempt migration
+4. Supports backward compatibility for older replays
+
+---
+
+## Downloadable Replays
+
+### Export Format
+
+**JSON Export Structure**:
+```json
+{
+	"replayVersion": "1.0.0",
+	"matchSeed": 1234567890,
+	"matchId": "match-001",
+	"date": "2025-11-16T14:30:00Z",
+	"competition": "Premier Division",
+	"venue": "Old Stafford",
+	"teams": [
+		{
+			"teamId": "team-001",
+			"name": "Manchester Reds",
+			"formation": "4-3-3",
+			"startingXI": [],
+			"substitutes": [],
+			"instructions": {}
+		},
+		{
+			"teamId": "team-002",
+			"name": "Anfield FC",
+			"formation": "4-3-3",
+			"startingXI": [],
+			"substitutes": [],
+			"instructions": {}
+		}
+	],
+	"players": [
+		{
+			"playerId": "player-001",
+			"number": 7,
+			"name": "James Horner",
+			"position": "ST",
+			"attributes": {},
+			"tendencies": {}
+		}
+	],
+	"userInputs": [
+		{
+			"timestamp": 120000,
+			"type": "substitution",
+			"playerOut": "player-001",
+			"playerIn": "player-012"
+		}
+	],
+	"matchEvents": [
+		{
+			"timestamp": 45000,
+			"type": "goal",
+			"playerId": "player-001",
+			"assistPlayerId": "player-003",
+			"goalType": "header"
+		}
+	],
+	"statistics": {
+		"finalScore": {"team1": 2, "team2": 1},
+		"possession": {"team1": 55, "team2": 45},
+		"shots": {"team1": 12, "team2": 8}
+	},
+	"matchHash": "a3b2c1d4e5f6..."
+}
+```
+
+**File Size**: ~15-25 KB per match (JSON format)
+
+**Download Process**:
+1. Serialize match data to JSON
+2. Create blob for download
+3. Trigger browser download with filename
+
+**Use Cases**:
+- Share replays with other users
+- Archive matches outside database
+- Import matches into analysis tools
+- Community highlight reels
+- Tournament brackets with replays
 
 ---
 
 ## Database Storage
 
-### JSON Serialization
+### Schema Design
 
-Match stream is stored as single JSON blob in database.
+**Matches Table**:
+- `match_id` (PRIMARY KEY): Unique match identifier
+- `match_seed` (UINT32): PRNG seed for replay
+- `date` (TIMESTAMP): Match date/time
+- `competition` (VARCHAR): League/tournament name
+- `venue` (VARCHAR): Stadium name
+- `team1_id`, `team2_id` (FOREIGN KEY): Team references
+- `final_score_team1`, `final_score_team2` (INT): Final score
+- `match_data` (JSON/TEXT): Complete replay data
+- `match_hash` (VARCHAR): Verification hash
+- `replay_version` (VARCHAR): Engine version
 
-**Storage Process**:
-1. Serialize entire matchStream object: `JSON.stringify(matchStream)`
-2. Store in database as TEXT or BLOB column
-3. Optional: Compress with gzip before storing (see below)
-4. Load from database: `JSON.parse(row.streamData)`
-
-**Storage Considerations**:
-- **Uncompressed**: ~130-135 MB per match (JSON string)
-- **Compressed** (gzip): ~65-90 MB per match (binary blob)
-- Database-agnostic (works with any database supporting TEXT/BLOB columns)
-- Optional: Store metadata separately for efficient querying (team names, final score, date)
-
-### Compression Strategy
-
-**Deflate/Gzip Compression**:
-- Lossless compression (no data loss)
-- ~50-70% file size reduction for JSON
-- Fast decompression (minimal overhead)
-
-**Process**: Use pako library (or equivalent) to compress JSON string with `pako.gzip(json)` before storing as binary blob. Decompress on load with `pako.ungzip(blob, { to: 'string' })` then parse JSON.
+**Storage Size**: ~15-25 KB per match (JSON data)
 
 ---
 
-## Stream Validation
+## Backend Integration
 
-### Checksum Verification
+### Instant Results Mode
 
-Optional CRC32 checksum for integrity verification. If present, compute CRC32 of stream data and compare with stored checksum. Throw error if mismatch indicates corruption.
+**Process**:
+1. Generate random match seed
+2. Load team rosters from database
+3. Initialize HeadlessScheduler with seed
+4. Run simulation to completion
+5. Extract statistics and events
+6. Store replay data in database
 
-### Version Compatibility
+**Performance**: 90-minute match in ~1-5 seconds
 
-Version field ensures compatibility. On load, check if `matchStream.version > CURRENT_STREAM_VERSION`. If newer version detected, throw error or handle migration. Supports backward compatibility for older stream formats.
+**Use Cases**:
+- Background season simulation
+- Batch tournament processing
+- AI testing and validation
+
+### Browser vs. Backend
+
+**Browser** (Real-Time/Replay):
+- RealTimeScheduler for live matches
+- Render 3D/2D visualization
+- User tactical changes
+- Visual playback
+
+**Backend** (Instant Results):
+- HeadlessScheduler instant sim
+- No rendering
+- Statistics generation only
+- Store for later playback
+
+**Compatibility**: Same deterministic engine, identical results from same seed.
 
 ---
 
 ## Summary
 
-**Match Stream Architecture**:
-- **Event-Based Snapshots**: Play resumption events (kickoff, throw-ins, corners, goal kicks, etc.) + optional periodic snapshots (30s during continuous play)
-- **Delta Encoding**: msOffset chain (UINT8, 0-255ms between delta events)
-- **INT16 Serialization**: 1cm resolution, 2 bytes per coordinate
-- **Variable Recording Rates**: Ball 5-20ms, Players 10-50ms (NOT fixed timesteps)
-- **JSON Format**: Single JSON blob per match stored in database
-- **Downloadable**: Export match stream as JSON file at any point (live or post-match)
-- **File Size**: ~65-135 MB per 90-minute match (compressed/uncompressed)
-- **Time-Travel**: Seek to any timestamp via event snapshots + delta reconstruction
+**Deterministic Replay System**:
+- **100% Deterministic**: Same seed = identical match every time
+- **Minimal File Size**: < 20 KB per match
+- **Perfect Reproduction**: Re-run simulation from seed
+- **Accelerated Playback**: 5×, 10×, 100× speed or instant
+- **Tactical Analysis**: Heatmaps, statistics from replayed simulation
+- **Browser & Backend**: Works in both environments
 
-**Stream Components**:
-- **Ball**: 18 bytes per update @ variable rate (5-20ms, avg ~13ms = ~77 Hz) = ~1.4 KB/sec
-- **Players**: 20 bytes per player @ variable rate (10-50ms, avg ~25ms = ~40 Hz) = ~17.6 KB/sec
-- **Event Snapshots**: ~40-80 per match (play resumption events) × ~550 bytes = ~20-45 KB
-- **Periodic Snapshots**: ~0-60 per match (only during long uninterrupted play) × ~500 bytes = ~0-30 KB
-- **Delta Events**: ~500,000-1,000,000 per match × ~5 bytes = ~2.5-5 MB
-- **Metadata + Teams**: ~10-20 KB
-- **Match Events**: ~100-300 × ~30 bytes = ~3-9 KB
-- **Statistics**: ~1-2 KB
+**Storage Requirements**:
+- Match seed (4 bytes)
+- Team/player data (~12 KB)
+- Match events (~1-9 KB)
+- Statistics (~1-2 KB)
+- **Total**: < 20 KB per match
 
-**What Gets Recorded**:
-✅ Ball position, velocity, spin (every physics update)
-✅ Player position, velocity, orientation, head orientation (every physics update)
-✅ Match events (goals, cards, substitutions, fouls)
-✅ Event snapshots (kickoff, throw-ins, corners, goal kicks, etc.)
-✅ Periodic snapshots (optional, during continuous play)
-✅ Full match metadata (teams, players, attributes, formation)
-✅ Match statistics (possession, passes, shots, etc.)
+**Replay Process**:
+1. Load seed + teams + events from database
+2. Initialize simulation with same seed
+3. Re-run simulation tick-by-tick
+4. Apply user inputs at stored timestamps
+5. Render or analyze as simulation progresses
 
-**What Does NOT Get Recorded**:
-❌ AI decision history (not needed for visual replay)
-❌ Vision snapshots (not needed, can estimate from head orientation)
-❌ Event scheduler state (internal implementation detail)
-❌ Update intervals/frequencies (dynamic, not deterministic)
+**Benefits**:
+- **6,500× smaller** file sizes
+- Store 10,000 matches in ~150 MB
+- Easy sharing (< 20 KB files)
+- Perfect reproduction guaranteed
+- Works in browser and backend
 
-**Live vs. Replay Mode**:
-- **Live Mode** (isLive = true): Viewer at most recent stream event
-  * Can view player vision cones (queried from match engine, not stream)
-  * Can make tactical changes, substitutions, shouts
-  * Match engine processes commands, writes to stream
-- **Replay Mode** (isLive = false): Viewer behind current stream position
-  * Read-only playback of recorded stream
-  * Cannot view vision cones (not in stream)
-  * Cannot make tactical changes
-  * Returns to live mode when reaching most recent event
-
-**Playback Features**:
-- Variable playback speeds (0.25× to 5×)
-- Smooth interpolation at any display framerate (60-240 Hz)
-- Instant jump to event snapshots (no delta scanning)
-- Heatmaps and tactical analysis
-- Pass networks and statistics
-- 1st-person camera (using recorded head orientation)
-- Visual replay ONLY (NOT deterministic simulation replay)
-
-**Storage & Export**:
-- Database: Single JSON blob per match
-- Compression: Deflate/gzip (~50-70% reduction) = ~65-90 MB
-- Download: Export as JSON file at any point (live or post-match)
-- Sharing: JSON format enables easy sharing between users
+**Use Cases**:
+- Post-match replay and analysis
+- Instant results (background simulation)
+- Tactical analysis (heatmaps, pass networks)
+- Community sharing (small file sizes)
+- Tournament/season progression

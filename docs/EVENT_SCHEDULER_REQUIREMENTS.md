@@ -9,10 +9,11 @@
 * Events are processed in order of their `EventType` values, which represents their priority.
 	* **Current implementation**: callbacks execute sequentially, one event at a time, to minimize allocations and align with our "dynamic tick" model where most ticks only touch a couple of entities.
 	* **Future option**: if we push heavy work into Web Workers / worker threads or a 3D collision pipeline demands it, we can bring back per-type batching (`Promise.all` per type) so every event for the same tick/type completes concurrently before advancing.
-* Deterministic replays/rewinds/output from the Event Scheduler is NOT a requirement.
-	* The main reason why, is because this is used for multiple AI implementations, which may or may not also be deterministic
-	* The simulation outputs a stream of player and ball positions, vectors, etc. which IS deterministic and will be serialized
-	* "Viewers" of the simulation do not view the outcome of the Event Scheduler callbacks, they read the event stream it produces
+* **FULLY DETERMINISTIC**: The match engine is 100% deterministic using a seeded PRNG.
+	* Given the same initial conditions (teams, formations, seed), the simulation produces IDENTICAL results every time
+	* This enables perfect replay functionality without storing position data
+	* Replays are achieved by re-running the simulation from the same seed with the same inputs
+	* File sizes for match replay are minimal (seed + match events only, no position data)
 * Support for both "Real Time" and "Headless" (Instant Results) modes.
 	* Ideally, "Headless" mode should run as fast as possible, avoid any timers and unecessary condition checks
 	* Headless mode is either run from start-to-finish for a match, or it's run from the current tick until the end of a match.

@@ -66,21 +66,21 @@ Players do not have omniscient knowledge of all entities on the field. Their per
 **CRITICAL**: Player updates use **FIVE independent systems** with different dynamic frequencies (see `EVENT_SCHEDULER.md`):
 
 1. **Body Physics** (10-50ms dynamic) - Player position, velocity, collision detection (speed-based)
-2. **AI Decisions** (30-200ms dynamic) - Action selection, decision-making logic (attribute/context-based)
+2. **AI Decisions** (30-200ms dynamic) - Action selection, decision-making logic (attribute/context-based, uses seeded PRNG)
 3. **Vision Perception** (15-60ms dynamic) - World snapshot, vision cone, visible objects (attribute-based)
 4. **Head Movement AI** (120-250ms dynamic) - Head orientation decisions/targets (awareness-based)
 5. **Head Movement Physics** (20-50ms dynamic) - Head rotation interpolation toward targets (rotation speed-based)
 
 **Vision Perception** (15-60ms, attribute-based):
 
-**CRITICAL**: Vision system enables **1st-person "through their eyes" replay**!
+**CRITICAL**: Vision system enables **1st-person "through their eyes" replay** by recalculating vision during deterministic replay!
 
 **Vision Update Frequency** (dynamic scheduling - see `EVENT_SCHEDULER.md` for formula):
 - **High Perception** (Vision 90+ Awareness 90+): 15ms updates (~67 Hz)
 - **Average Perception** (Vision 70 Awareness 70): 38ms updates (~26 Hz)
 - **Low Perception** (Vision 50 Awareness 50): 60ms updates (~16.67 Hz)
 - **Formula**: `interval = 60 - ((visionRating * 0.6 + awarenessRating * 0.4 - 50) / 49) * 45`
-- **NOT RECORDED IN REPLAY**: Too large, can reconstruct from player positions during playback
+- **Recalculated During Replay**: Vision reconstructed from player positions during deterministic replay
 
 **Head Movement AI** (30-200ms, awareness-based):
 
@@ -104,7 +104,7 @@ Players do not have omniscient knowledge of all entities on the field. Their per
 - **Double-Click Player**: Enter 1st-person view, travel with player through match
 - **Ghost View**: Show both real positions and player's perceived positions simultaneously
 
-**Vision Recording Data**:
+**Vision System Architecture**:
 
 **CRITICAL**: Eyes are **LOCAL to player** - they move automatically with the player!
 
@@ -114,7 +114,7 @@ Players do not have omniscient knowledge of all entities on the field. Their per
 - **Eye Offset**: Local offset from player origin (e.g., `{x: 0, y: 1.75, z: 0}`)
 - **Eyes move with player automatically** (standard game engine pattern)
 
-**What We Record** (Vision Snapshot Data):
+**Vision Data** (recalculated during deterministic replay):
 - **Player Position** (world space, feet): For calculating eye position at runtime
 - **Player Height**: To compute eye offset (97% of height)
 - **Body Facing**: Player body rotation (world space, radians)
@@ -122,13 +122,13 @@ Players do not have omniscient knowledge of all entities on the field. Their per
 - **Head Pitch**: Head rotation UP/DOWN **relative to body** (radians, positive = looking down)
 - **Vision Cone**: Field of view (~120° horizontal, ~90° vertical)
 - **Vision Range**: Maximum perception distance (~50 meters)
-- **Visible Objects**: List of players and ball within FOV and range THIS FRAME
-- **Recording Frequency**: 15-60ms dynamic intervals (~16.67-67 Hz), attribute-adjusted, NOT STORED IN REPLAY
+- **Visible Objects**: List of players and ball within FOV and range (recalculated during replay)
+- **Update Frequency**: 15-60ms dynamic intervals (~16.67-67 Hz), attribute-adjusted
 
-**NOTE**: Head **roll** is NOT recorded - players don't roll their heads (yaw/pitch sufficient).
+**NOTE**: Head **roll** is NOT used - players don't roll their heads (yaw/pitch sufficient).
 
 **Head Orientation is Relative to Body**:
-- Head yaw/pitch/roll are **offsets** from body facing direction
+- Head yaw/pitch are **offsets** from body facing direction
 - Player can turn head left/right while body runs forward
 - Player can look up to track high ball or down at ground
 - Example: Body facing π (forward), head yaw +0.3 rad (turned ~17° right from body)
@@ -139,33 +139,13 @@ Eye position calculated from player feet position + height offset. Formula: `eye
 
 **1st-Person Camera Replay**:
 
-User can enter 1st-person mode by selecting player at specific timestamp. Camera follows player's exact eye position and head orientation (interpolated between snapshots for smooth 60/144 FPS display). Two modes available:
+User can enter 1st-person mode by selecting player during replay. Camera follows player's exact eye position and head orientation (recalculated from deterministic simulation). Two modes available:
 1. **Real World View**: Shows actual match state (what really happened)
 2. **Perceived View**: Shows only what player perceived (fuzzy positions, invisible players hidden)
 
 **Debug Ghost View**:
 
 During paused state, clicking player shows dual view: Real player positions (solid), perceived positions overlaid (ghosted, transparent cyan), hidden players marked (red), and vision cone visualization.
-
-**Vision Snapshot Content**:
-- Player position/height (for eye position calculation)
-- Body facing and head orientation (yaw, pitch, roll)
-- Visible player IDs (within vision cone)
-- Perceived positions (with awareness-based error)
-- Ball visibility and perceived position
-
-**Eye Position Calculation** (runtime, not stored):
-- Formula: eye position Y = player position Y + (player height × 0.97)
-- Example: Player at 1.80m height → eye Y = 1.746m
-
-**Serialization** (for replay file - see REPLAY.md):
-- Player position: INT16 (1cm resolution, 6 bytes)
-- Player height: UINT8 (1cm resolution, 1 byte, range 0-255cm)
-- Body facing: INT16 (0.001 rad resolution, 2 bytes)
-- Head orientation (yaw/pitch/roll): INT16 (0.001 rad resolution, 6 bytes)
-- Visible player IDs: UINT8 array (1 byte per ID, variable length)
-- Perceived positions: INT16 delta from real position (2 bytes per axis per player)
-- **Total**: ~20-60 bytes per snapshot (depending on visible player count)
 
 ### Fuzzy Vision
 
@@ -417,7 +397,7 @@ Player AI returns an action decision and optionally updates head orientation:
 - **Optional**: AI can update `headTarget` to control where player looks
 - **Smooth Transition**: Head rotates smoothly toward target (not instant)
 - **Independent**: Head movement independent of body orientation
-- **Vision Recording**: Head orientation determines vision cone for replay
+- **Vision Recalculation**: Head orientation recalculated during deterministic replay for vision cone
 - **Default Behavior**: If not specified, head follows ball or movement direction
 
 ## Class Hierarchy

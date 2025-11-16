@@ -64,7 +64,8 @@ Each physics update (dynamic 5-20ms intervals):
 - **Suspension**: Ball updates suspended when stationary (speed < 0.001 m/s)
 - **No Frame-Rate Coupling**: Physics NEVER tied to display FPS
 - **Speed-Based**: Faster ball = more frequent updates for accuracy
-- **Viewer Interpolation**: Display smoothly interpolates between snapshots at monitor refresh rate (60 Hz, 144 Hz, etc.)
+- **Renderer Interpolation**: Display reads current state and interpolates for smooth rendering at monitor refresh rate (60 Hz, 144 Hz, etc.)
+- **Deterministic**: Uses seeded PRNG for reproducible physics
 
 **Update Frequency Formula**:
 - Speed < 0.001 m/s: **SUSPENDED** (return null, no updates)
@@ -490,22 +491,11 @@ Different physics profiles for variety:
 - **State**: 'stationary' | 'rolling' | 'bouncing' | 'flying'
 - **Timestamp**: ms since match start
 
-**Replay Compression** (INT16, reduced precision):
-- Position: 1cm resolution (INT16 range: ±327m)
-- Velocity: 1cm/s resolution
-- Spin: 0.01 rad/s resolution
-- Total: 18 bytes per snapshot
-- Frequency: 5-20ms intervals = 90-360 snapshots/second
-- Average: ~13ms intervals = ~138 snapshots/second = ~2.5 KB/second
-
-### Network Synchronization
-
-For multiplayer or replay:
-
-- **Full State**: Send complete ball state
-- **Delta Compression**: Send only changed values
-- **Prediction**: Client predicts ball movement, server corrects
-- **Interpolation**: Smooth transitions between server updates
+**Deterministic Physics**:
+- All physics calculations use seeded PRNG for reproducibility
+- Same seed produces identical ball trajectories every time
+- No random variation between replay runs
+- Perfect reproduction for replay from seed
 
 ## Edge Cases
 

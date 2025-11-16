@@ -11,11 +11,12 @@ Chosen stack only: HTML Canvas 2D and Three.js with WebGPU (fallback to WebGL2).
 
 ## Shared Principles
 
-- Decoupled from simulation: renderer consumes position/state snapshots and never drives gameplay
+- Decoupled from simulation: renderer reads current simulation state and never drives gameplay
 - Dynamic scheduling: simulation updates occur at variable intervals (ball 5-20ms, players 10-50ms, AI 30-200ms)
-- Viewer interpolation: render at display refresh; interpolate between past snapshots; do not extrapolate
+- Renderer interpolation: render at display refresh; interpolate positions for smooth display
 - Single 3D coordinate system (world XYZ); team-relative transforms handled elsewhere
 - Same debug mindset across modes (optional overlays for development)
+- Deterministic simulation: same seed produces identical match regardless of renderer
 
 ## Mode 1 - 2D Canvas (Pure 2D)
 
