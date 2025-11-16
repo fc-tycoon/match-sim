@@ -1,0 +1,30 @@
+SplitMix32 License & Author
+Author: Chris Wellons (nullprogram.com / skeeto on GitHub)
+
+Website: https://nullprogram.com/
+GitHub: https://github.com/skeeto
+License: PUBLIC DOMAIN
+
+From his website (https://nullprogram.com/blog/2018/07/31/):
+
+"All information on this blog, unless otherwise noted, is hereby released into the public domain, with no rights reserved."
+
+Original Source: The hash function that inspired SplitMix32 is the MurmurHash3 finalizer (fmix32). Chris Wellons used his "hash prospector" tool to find improved constants for better statistical properties.
+
+Note: The original SplitMix64 (64-bit version) was created by Guy Steele and Doug Lea for Java's SplittableRandom. The 32-bit variant with improved constants is Chris Wellons' work, released to public domain.
+
+
+References:
+https://github.com/bryc/code/blob/master/jshash/PRNGs.md
+
+https://gee.cs.oswego.edu/dl/papers/oopsla14.pdf
+Fast Splittable Pseudorandom Number Generators
+Guy L. Steele Jr. & Doug Lea & Christine H. Flood
+
+https://github.com/umireon/my-random-stuff/blob/e7b17f992955f4dbb02d4016682113b48b2f6ec1/xorshift/splitmix32.c
+Written in 2016 by Kaito Udagawa
+Released under CC0 <http://creativecommons.org/publicdomain/zero/1.0/>
+
+https://marc-b-reynolds.github.io/shf/2017/09/27/LPRNS.html
+
+https://nullprogram.com/blog/2018/07/31/
