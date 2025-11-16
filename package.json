@@ -1,0 +1,45 @@
+{
+	"name": "fc-tycoon-match-sim",
+	"productName": "fc-tycoon-match-sim",
+	"version": "27.0.0-alpha.1",
+	"description": "FC Tycoon 2027 Match Simulator (alpha)",
+	"main": "src/main.js",
+	"private": true,
+	"license": "SEE LICENSE IN LICENSE.md",
+	"author": {
+		"name": "Trevor Herselman",
+		"email": "trevor@darkwavestudios.com"
+	},
+	"scripts": {
+		"start": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"lint": "eslint src",
+		"lint:fix": "eslint src --fix",
+		"lint:quiet": "eslint src --quiet",
+		"lint:trim": "eslint src --fix --rule \"no-trailing-spaces: error\""
+	},
+	"dependencies": {
+		"@element-plus/icons-vue": "^2.3.2",
+		"chart.js": "^4.5.1",
+		"element-plus": "^2.11.5",
+		"marked": "^17.0.0",
+		"three": "^0.180.0",
+		"vue": "^3.5.22",
+		"vue-chartjs": "^5.3.2",
+		"vue-router": "^4.6.3"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.39.1",
+		"@types/node": "^24.10.1",
+		"@types/three": "^0.180.0",
+		"@typescript-eslint/eslint-plugin": "^8.46.4",
+		"@typescript-eslint/parser": "^8.46.4",
+		"@vitejs/plugin-vue": "^6.0.1",
+		"eslint": "^9.39.1",
+		"eslint-plugin-vue": "^10.5.1",
+		"source-map-support": "^0.5.21",
+		"typescript": "^5.9.3",
+		"vite": "^7.1.12"
+	}
+}

@@ -1,0 +1,43 @@
+# Dependency directories
+node_modules/
+dist/
+build/
+
+# Vite
+.vite/
+
+# Editor/IDE
+.vscode/
+.idea/
+.editorconfig
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+.DS_Store
+
+# dotenv environment variables file
+.env
+.env.test
+
+# Database files and large data directories
+databases/
+*.db
+
+# Temporary files
+package-lock.json
+_*
+
+# backups/copies
+*copy*
+*backup*
+*old*
+*Copy*
+*OLD*
