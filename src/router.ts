@@ -1,17 +1,34 @@
-import { createRouter, createWebHistory } from 'vue-router'
+/**
+ * FC Tycoon™ 2027 Match Simulator - Vue Router Configuration
+ *
+ * Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+ * Licensed under FC Tycoon Match Simulator Source Available License.
+ * See LICENSE.md in the project root for license terms.
+ */
+
+import { createRouter, createWebHistory, type Router } from 'vue-router'
 import LicenseAcceptance from '@/pages/LicenseAcceptance.vue'
 import MatchSimulator from '@/pages/MatchSimulator.vue'
-import { STORAGE_KEYS } from '@/utils/constants.js'
+import { STORAGE_KEYS } from '@/utils/constants'
+
+/**
+ * License acceptance data structure
+ */
+interface LicenseData {
+	accepted: boolean
+	version: string
+	acceptedDate: string
+}
 
 /**
  * Check if license has been accepted
- * @returns {boolean} True if license is accepted
+ * @returns True if license is accepted
  */
-function isLicenseAccepted() {
+function isLicenseAccepted(): boolean {
 	const stored = localStorage.getItem(STORAGE_KEYS.LICENSE_ACCEPTANCE)
 	if (stored) {
 		try {
-			const licenseData = JSON.parse(stored)
+			const licenseData = JSON.parse(stored) as LicenseData
 			return licenseData.accepted === true
 		} catch (error) {
 			console.error('Failed to parse license data:', error)
@@ -55,4 +72,4 @@ router.beforeEach((to, from, next) => {
 	next()
 })
 
-export default router
+export default router as Router

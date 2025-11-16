@@ -1,3 +1,11 @@
+<!--
+	FC Tycoon™ 2027 Match Simulator - Root Application Component
+
+	Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+	Licensed under FC Tycoon Match Simulator Source Available License.
+	See LICENSE.md in the project root for license terms.
+-->
+
 <template>
 	<div id="app">
 		<router-view />

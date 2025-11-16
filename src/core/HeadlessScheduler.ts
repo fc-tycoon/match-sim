@@ -1,4 +1,13 @@
 /**
+ * FC Tycoon™ 2027 Match Simulator - Headless Event Scheduler
+ *
+ * Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+ * This file is part of FC Tycoon™ 2027 Match Simulator.
+ * Licensed under the FC Tycoon Match Simulator Source Available License.
+ * See LICENSE.md in the project root for license terms.
+ */
+
+/**
  * Headless scheduler wrapper for {@link EventScheduler}.
  *
  * Provides an instant-results execution mode that advances the underlying

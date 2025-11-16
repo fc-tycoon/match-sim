@@ -1,7 +1,15 @@
+/**
+ * FC Tycoon™ 2027 Match Simulator - Application Entry Point
+ *
+ * Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+ * Licensed under FC Tycoon Match Simulator Source Available License.
+ * See LICENSE.md in the project root for license terms.
+ */
+
 import { createApp } from 'vue'
 import App from '@/App.vue'
-import router from '@/router.js'
-import * as constants from '@/utils/constants.js'
+import router from '@/router'
+import * as constants from '@/utils/constants'
 
 // Element Plus imports
 import ElementPlus from 'element-plus'

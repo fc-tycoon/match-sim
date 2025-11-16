@@ -3,7 +3,7 @@
 	"productName": "fc-tycoon-match-sim",
 	"version": "27.0.0-alpha.1",
 	"description": "FC Tycoon 2027 Match Simulator (alpha)",
-	"main": "src/main.js",
+	"type": "module",
 	"private": true,
 	"license": "SEE LICENSE IN LICENSE.md",
 	"author": {

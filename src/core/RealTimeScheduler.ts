@@ -1,3 +1,12 @@
+/**
+ * FC Tycoon™ 2027 Match Simulator - Real-Time Event Scheduler
+ *
+ * Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+ * This file is part of FC Tycoon™ 2027 Match Simulator.
+ * Licensed under the FC Tycoon Match Simulator Source Available License.
+ * See LICENSE.md in the project root for license terms.
+ */
+
 import { EventScheduler } from './EventScheduler'
 
 const wait = (delay: number): Promise<void> => new Promise((resolve) => {
