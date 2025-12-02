@@ -73,7 +73,7 @@ Goalkeeper dynamically adjusts position based on:
 - **Backpass**: Move to receive backpass from defender
 
 **Positioning Logic**:
-- Base position at goal center (e.g., `(0, 0, -52.5)` for Team 1)
+- Base position at goal center (e.g., `x = -52.5, y = 0` for Home team)
 - Move forward to narrow angle when ball in attacking third: `advanceDist = (Positioning / 99) × 6m`
 - Shift laterally to cover near post: `lateralShift = (ballX / fieldWidth) × 2m`
 
@@ -327,7 +327,7 @@ Each goalkeeper can use different AI engine:
 **Input** (sent to worker):
 - Goalkeeper attributes (1-99 scale: reflexes, diving, handling, positioning, etc.)
 - Goalkeeper tendencies (0.0-1.0 floats, snake_case: come_for_crosses, sweeper_keeper, etc.)
-- Current position, velocity, facing angle
+- Current position, velocity, facing direction (unit vector)
 - Visible entities (opponents, teammates, ball within vision)
 - Goal data (position, width, height)
 - Game state (score, time, phase)

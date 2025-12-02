@@ -19,6 +19,8 @@
  */
 export const STORAGE_KEYS = {
 	LICENSE_ACCEPTANCE: 'fc-tycoon-2027-match-sim-license',
+	SHADOW_QUALITY: 'fc-tycoon-2027-match-sim-shadow-quality',
+	SPOTLIGHT_SHADOW_QUALITY: 'fc-tycoon-2027-match-sim-spotlight-shadow-quality',
 } as const
 
 /**

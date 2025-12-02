@@ -1,0 +1,58 @@
+# FC Tycoon™ 2027 Match Simulator - AI Crawler Restrictions
+# Copyright © 2025 Darkwave Studios LLC. All rights reserved.
+#
+# This robots.txt is included for completeness. The primary protection
+# is the LICENSE.md which explicitly prohibits AI/ML training.
+
+# Block AI training crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: OmgiliBot
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+# Allow regular search engines for discoverability
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /

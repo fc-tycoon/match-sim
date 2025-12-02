@@ -60,19 +60,6 @@ export default [
 				__DEV__: 'readonly',
 				__PROD__: 'readonly',
 				__DEBUG__: 'readonly',
-				__USE_ASAR__: 'readonly',
-				__STEAM__: 'readonly',
-				__INTERNAL_USE__: 'readonly',
-				__EDITOR__: 'readonly',
-
-				// Our `window.ipc` Electron IPC bridge
-				ipc: 'readonly',
-
-				// Electron Forge / Vite globals
-				GAME_VITE_DEV_SERVER_URL: 'readonly',
-				GAME_VITE_NAME: 'readonly',
-				EDITOR_VITE_DEV_SERVER_URL: 'readonly',
-				EDITOR_VITE_NAME: 'readonly',
 			},
 		},
 
@@ -120,7 +107,7 @@ export default [
 			// Warn on missing explicit emits (helpful but not critical)
 			// 'vue/require-explicit-emits': 'warn', // WRONG! WE **DO** REQUIRE THIS!
 
-			// Allow reserved names for PrimeVue globally registered components
+			// Allow reserved names for Element Plus globally registered components
 			'vue/no-reserved-component-names': 'off',
 
 			// Require v-bind:key with v-for
@@ -225,11 +212,13 @@ export default [
 			// Other
 			'**/coverage/**',
 			'**/*.min.js',
-			// Backups and copies
-			'**/*backup*.js',
-			'**/*backup*.vue',
-			'**/*copy*.js',
-			'**/*copy*.vue',
+			// Ignore backups and copies
+			'**/*[bB][aA][cC][kK][uU][pP]*',
+			'**/*[cC][oO][pP][yY]*',
+			// Ignore "Old" files (case insensitive, whole word only - surrounded by non-alpha)
+			'**/*[-_.][oO][lL][dD][-_.].*', // e.g. file-old-version.js
+			'**/*[-_.][oO][lL][dD].*',      // e.g. file-old.js
+			'**/[oO][lL][dD][-_.].*',       // e.g. old-file.js
 		],
 	},
 
@@ -269,6 +258,36 @@ export default [
 			'no-trailing-spaces': 'warn',
 			'eol-last': ['warn', 'always'],
 			'linebreak-style': ['error', 'unix'],
+		},
+	},
+
+	// Vue files with TypeScript (<script lang="ts">)
+	{
+		files: ['**/*.vue'],
+		languageOptions: {
+			parserOptions: {
+				parser: tsparser,
+				ecmaVersion: 2022,
+				sourceType: 'module',
+			},
+		},
+		plugins: {
+			'@typescript-eslint': tseslint,
+		},
+		rules: {
+			// Disable base ESLint rules that conflict with TypeScript
+			'no-unused-vars': 'off',
+			'no-undef': 'off',
+
+			// Enable TypeScript-specific rules
+			'@typescript-eslint/no-unused-vars': ['warn', {
+				argsIgnorePattern: '^_',
+				varsIgnorePattern: '^_',
+			}],
+			'@typescript-eslint/no-explicit-any': 'off',
+			'@typescript-eslint/explicit-function-return-type': 'off',
+			'@typescript-eslint/explicit-module-boundary-types': 'off',
+			'@typescript-eslint/no-non-null-assertion': 'off',
 		},
 	},
 ]

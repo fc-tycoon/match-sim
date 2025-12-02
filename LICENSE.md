@@ -2,8 +2,9 @@
 
 **Copyright © 2025 Darkwave Studios LLC. All rights reserved.**
 
-**Product**: FC Tycoon™ 2027 Match Simulator (Web-Based 2D/3D Match Engine)  
-**Contact**: <legal@darkwavestudios.com>
+**Product**: FC Tycoon™ 2027 Match Simulator (Browser-Based 2D/3D Match Engine)  
+**Contact**: <legal@darkwavestudios.com>  
+**Last Updated**: November 28, 2025
 
 ---
 
@@ -48,7 +49,9 @@ This is **SOURCE AVAILABLE, NOT OPEN SOURCE**. You can view the code and use the
 - ✗ **Use code in other games** - Cannot reuse in any other project (even non-commercial)
 - ✗ **Create competing games** - Cannot build rival football/match simulation games
 - ✗ **Extract algorithms** - Cannot copy physics, AI, or simulation systems *from our code*
-- ✗ **Train AI/ML models** - Cannot use code/data to train models for other games
+- ✗ **Train AI/ML models** - Cannot use code/data to train ANY machine learning or AI models
+- ✗ **AI data mining** - Cannot scrape, index, or process code for AI training datasets
+- ✗ **LLM training** - Cannot use in training large language models, code assistants, or generative AI
 - ✗ **Sell or sublicense** - Cannot sell, resell, or license *our* code/simulator
 - ✗ **Commercial use** - Cannot use *our code* in commercial products without written permission
 - ✗ **Remove attribution** - Cannot remove copyright notices or claim as your own
@@ -98,11 +101,11 @@ For clarity in this License:
 
 **"Software"** means the FC Tycoon™ 2027 Match Simulator, including:
 
-- All source code (JavaScript, Vue.js components, Three.js graphics)
+- All source code (JavaScript, TypeScript, Vue.js components, Three.js graphics)
 - 3D models, textures, shaders, and visual assets
-- Match engine algorithms, physics systems, and AI logic
+- Match engine algorithms, physics systems, AI logic, and event scheduler
 - User interface designs and components
-- Database schemas, data structures, and configurations
+- Database schemas, data structures, data dumps, and configurations
 - Documentation, comments, and related materials
 
 **"Use"** means accessing, running, executing, displaying, or interacting with the compiled or running version of the Software in a web browser or similar environment.
@@ -125,7 +128,7 @@ Darkwave Studios LLC grants you a **non-exclusive, worldwide, royalty-free** rig
 
 - View and read the source code
 - Study the implementation for educational purposes
-- Analyze the architecture and design patterns
+- Analyze the architecture, design patterns, and data structures
 - Reference in academic papers, theses, or educational materials (with proper attribution)
 
 ### 2.2 Usage Rights
@@ -241,13 +244,19 @@ You may **NOT** (without explicit written permission):
 - Embed the Software in paid applications
 - Offer the Software as part of a commercial hosting service
 
-### 3.4 No AI/ML Training
+### 3.4 No AI/ML Training or Data Mining
 
 You may **NOT**:
 
-- Use the source code, algorithms, or data to train AI or machine learning models
-- Create datasets from the code for use in other projects
-- Feed the code into code generation tools for use in competing products
+- Use the source code, algorithms, documentation, or any associated data to train artificial intelligence systems, machine learning models, neural networks, or similar technologies
+- Create, compile, or contribute to datasets, corpora, or training data derived from this Software
+- Feed, input, or process the code through large language models (LLMs), code generation tools, AI assistants, or generative AI systems for the purpose of training, fine-tuning, or improving such systems
+- Scrape, crawl, index, or mine the source code or repository for AI/ML training purposes
+- Use automated systems to extract patterns, structures, or knowledge from the codebase for machine learning applications
+- Include this code in any dataset used for training code completion, code suggestion, or code generation models
+- Use any outputs, derivatives, or analyses of this code as training data for AI systems
+
+**Explicit Notice to AI Training Services**: This codebase is explicitly excluded from any AI/ML training dataset. By accessing this repository, AI training crawlers, bots, and automated systems are prohibited from indexing, storing, or using this code for training purposes. This restriction applies to, but is not limited to: GitHub Copilot, OpenAI, Anthropic, Google, Meta, and any other entity operating AI/ML training systems.
 
 ### 3.5 No Unauthorized Distribution
 
@@ -806,6 +815,6 @@ This match simulator is free to use and the source code is visible for learning,
 
 ---
 
-*Last Updated: November 16, 2025*  
-*Version: 1.0*  
+*Last Updated: November 28, 2025*  
+*Version: 1.2*  
 *Darkwave Studios LLC - All Rights Reserved*

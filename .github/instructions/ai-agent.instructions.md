@@ -29,11 +29,12 @@ applyTo: '**'
 - **Vue.js 3.5** - Options API only (NOT Composition API)
 - **Element Plus 2.11** - UI component library (Dark theme)
 - **Three.js r180** - 3D rendering with WebGPU (fallback to WebGL2)
-- **Vite 7.1** - Build tool and development server
+- **Vite 7.x** - Build tool and development server
 - **marked 17.0** - Markdown parsing
 
 **Development Tools**:
-- **ESLint** - Code quality and linting
+- **ESLint 9.x** - Code quality and linting
+- **Stylelint** - CSS/Vue style linting
 - **VS Code** - Recommended IDE
 
 ---
@@ -42,24 +43,33 @@ applyTo: '**'
 
 ```
 match-sim/
-├── docs/                    # Documentation
+├── docs/                    # Documentation (architecture, systems, requirements)
 ├── src/                     # Source code
-│   ├── main.js              # Application entry point
+│   ├── main.ts              # Application entry point
 │   ├── App.vue              # Root component
-│   ├── router/              # Vue Router configuration
-│   ├── pages/               # Full-screen pages
+│   ├── router.ts            # Vue Router configuration
+│   ├── globals.d.ts         # Global TypeScript declarations
+│   ├── pages/               # Full-screen pages (Vue components)
 │   ├── components/          # Reusable Vue components
-│   ├── ai/                  # Per-player AI modules
-│   ├── modules/             # Non-Vue modules (physics, scheduler, etc.)
-│   ├── utils/               # Utility functions
-│   └── assets/              # Static assets
+│   ├── core/                # Core systems (Match, EventScheduler, Ball, etc.)
+│   │   └── ai/              # Player AI systems (behaviors, brains, vision)
+│   ├── store/               # Vue stores (match, settings, events, database)
+│   ├── modules/             # Feature modules (match-engine, etc.)
+│   ├── roles/               # Player role definitions (JSON)
+│   ├── exports/             # Exported data (formations, positions, slots)
+│   └── utils/               # Utility functions
 ├── .github/                 # GitHub configuration
-│   └── instructions/        # AI agent instructions
+│   ├── instructions/        # AI agent instructions
+│   └── CODING_STYLE.md      # Detailed coding style guidelines
+├── licenses/                # Third-party license files
 ├── index.html               # HTML entry point
 ├── vite.config.js           # Vite configuration
 ├── eslint.config.mjs        # ESLint configuration
+├── stylelint.config.mjs     # Stylelint configuration
+├── tsconfig.json            # TypeScript configuration
 ├── package.json             # Dependencies and scripts
-└── LICENSE.md               # Source-available license
+├── robots.txt               # AI crawler restrictions
+└── LICENSE.md               # Source-available license (v1.1)
 ```
 
 ---
@@ -85,6 +95,7 @@ npm run lint      # Check code quality
    - New Vue component functionality
    - Refactoring functions or methods
    - Changes to component props, emits, or data structure
+5. **Auto-Fix Linting**: Run `npm run lint:fix` after making edits to automatically fix formatting issues (indentation, spacing, etc.).
 
 ---
 
@@ -105,6 +116,12 @@ npm run lint      # Check code quality
 - **Files**: kebab-case (e.g., `match-engine.js`)
 - **Directories**: kebab-case (e.g., `match-simulation/`)
 
+### Class Structure & Performance
+- **Immutability**: Use `Object.freeze(this)` or `Object.seal(this)` at the end of constructors.
+  - **Purpose**: Prevents adding new properties after construction, enforcing explicit structure and aiding V8 JIT optimization.
+  - **Scope**: Recommended for all classes, especially `readonly` data structures.
+  - **Note**: This is a shallow operation (does not deep-freeze arrays or child objects).
+
 ---
 
 ## AI Agent Responsibilities
@@ -119,6 +136,29 @@ The AI Agent will:
 * ALWAYS suggest Next Steps after tasks
 * WAIT for user approval before proceeding with suggestions
 
+### CRITICAL: Documentation Synchronization Rule
+
+**When changing code logic, function names, method signatures, or APIs, the AI Agent MUST:**
+
+1. **MANDATORY SEARCH**: Search for ALL references in `/docs/` and source files to the old code
+2. **UPDATE ALL MATCHES**: Change every reference in documentation files to match new implementation
+3. **FILES TO CHECK**:
+   - All `.md` files in `/docs/`
+   - JSDoc comments in source files
+   - Code examples in documentation
+   - Architecture diagrams or descriptions
+   - Header comments in all affected files
+4. **VERIFICATION**: Search again after changes to confirm no old references remain
+5. **NO EXCEPTIONS**: This applies to ALL code changes, including:
+   - Function/method renames
+   - Parameter changes
+   - Return type changes
+   - API endpoint changes
+   - Class/interface renames
+   - Module/file renames
+
+**Failure to update documentation is considered an incomplete task.**
+
 ---
 
 ## Next Steps Protocol
@@ -131,4 +171,4 @@ After EVERY task, the AI Agent MUST:
 
 ---
 
-For detailed coding style guidelines, see `CODING_STYLE.md` in this directory.
+For detailed coding style guidelines, see `CODING_STYLE.md` in the `.github/` directory.

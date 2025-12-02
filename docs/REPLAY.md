@@ -78,12 +78,34 @@ The simulation produces **IDENTICAL** results every time.
 
 ### Match Events
 
-**User Inputs** (tactical changes during match):
-- **Substitutions**: Timestamp, player out ID, player in ID
-- **Tactical Changes**: Timestamp, formation change, instruction changes
-- **Formation Transitions**: Timestamp, new formation ID
+**External Events (Human Input Only)**:
+External events are **human inputs** that affect simulation state. AI decisions are deterministic (seeded PRNG) and don't need recording - only human input must be captured to make replay deterministic:
+- **Substitutions**: Tick, player out ID, player in ID, position
+- **Tactical Changes**: Tick, formation change, instruction changes
+- **Shouts**: Tick, player ID, shout type (PRESS_HIGH, HOLD_POSITION, etc.)
 
-**Match Events** (recorded during simulation):
+These use a **reserved sequence number range** (0 to 999,999) to ensure they execute FIRST within their tick, before any simulation events react to the change. See [EVENT_SCHEDULER.md](./EVENT_SCHEDULER.md) for details.
+
+**External Event Format**:
+```typescript
+// From ExternalEventTypes.ts
+import type { ExternalEventPayload, ExternalEventRecord } from '@/core/ExternalEventTypes'
+
+interface ExternalEventRecord {
+    tick: number                // Absolute tick (0 to ~5.4M for 90 min)
+    seq: number                 // Sequence number (0, 1, 2, 3...)
+    data: ExternalEventPayload  // Typed payload (contains type discriminator)
+}
+
+// Payload types:
+const enum ExternalEventType {
+    SUBSTITUTION,   // Player substitution
+    TACTICAL,       // Formation/instruction changes  
+    SHOUT,          // Sideline shout to player
+}
+```
+
+**Simulation Events (Recorded for Display)**:
 - **Goals**: Timestamp, player ID, assist player ID, goal type
 - **Cards**: Timestamp, player ID, card type (yellow/red)
 - **Injuries**: Timestamp, player ID, injury duration
@@ -145,17 +167,55 @@ The simulation produces **IDENTICAL** results every time.
 
 **Replay Execution**:
 1. Initialize event scheduler with match seed
-2. Set up teams with identical formations/tactics/instructions
-3. Run simulation tick-by-tick (1 tick = 1 ms)
-4. Apply user inputs at stored timestamps:
-   - Substitutions at exact tick
-   - Tactical changes at exact tick
-   - Formation transitions at exact tick
-5. Render or analyze as simulation progresses
+2. Create Match instance (retrieves exclusive external scheduling access)
+3. **Sort external events by `seq`** (preserves insertion order)
+4. **Pre-schedule ALL external events** using `match.scheduleExternal(tick, data, callback)`
+5. Run simulation tick-by-tick (1 tick = 1 ms)
+6. External events execute automatically at their exact queue positions
+7. Simulation events get deterministic seq numbers (1M+)
+8. Render or analyze as simulation progresses
+
+**Why Pre-Scheduling Works**:
+- Before simulation starts, `#minExternalTick = 0`
+- `match.scheduleExternal(tick, ...)` schedules at `0 + tick = tick` (absolute tick)
+- External events use seq numbers 0, 1, 2... (auto-increment, same order as live)
+- Simulation events start at seq 1,000,000 (auto-increment)
+- External events **always execute first** within a tick (lower seq wins)
+- Result: **IDENTICAL event execution order every time**
+
+**Example Replay Initialization**:
+```typescript
+import { ExternalEventType } from '@/core/ExternalEventTypes'
+
+function initReplay(replayData: MatchReplayData) {
+    const scheduler = new EventScheduler()
+    const rng = new Random(replayData.seed)
+    const match = new Match(field, team1, team2, replayData.seed, scheduler)
+    
+    // Sort by seq to preserve original insertion order
+    const sorted = replayData.externalEvents.sort((a, b) => a.seq - b.seq)
+    
+    // Pre-schedule ALL external events through Match
+    // Since #minExternalTick = 0, tick offset equals absolute tick
+    for (const record of sorted) {
+        match.scheduleExternal(
+            record.tick,
+            record.data,
+            createCallbackFromData(record.data)
+        )
+    }
+    
+    // Initialize match with teams, formations, etc.
+    // Run simulation - will produce identical results
+    return { scheduler, match, rng }
+}
+```
 
 **Deterministic Guarantee**:
 - Same seed → same PRNG sequence
-- Same user inputs → same outcomes
+- Same external events in same order → same seq numbers (0, 1, 2...)
+- Same external events at same ticks → same state modifications
+- Same simulation events at same seq numbers → same outcomes
 - Result: **IDENTICAL match every time**
 
 ### Playback Modes
@@ -330,12 +390,25 @@ The simulation produces **IDENTICAL** results every time.
 			"tendencies": {}
 		}
 	],
-	"userInputs": [
+	"externalEvents": [
 		{
-			"timestamp": 120000,
-			"type": "substitution",
-			"playerOut": "player-001",
-			"playerIn": "player-012"
+			"tick": 45678,
+			"seq": 0,
+			"data": {
+				"type": 0,
+				"playerOutId": 1,
+				"playerInId": 12,
+				"positionSlotId": 123
+			}
+		},
+		{
+			"tick": 54236,
+			"seq": 1,
+			"data": {
+				"type": 2,
+				"playerId": 7,
+				"shoutType": 0
+			}
 		}
 	],
 	"matchEvents": [
@@ -348,9 +421,9 @@ The simulation produces **IDENTICAL** results every time.
 		}
 	],
 	"statistics": {
-		"finalScore": {"team1": 2, "team2": 1},
-		"possession": {"team1": 55, "team2": 45},
-		"shots": {"team1": 12, "team2": 8}
+		"finalScore": [2, 1],
+		"possession": [55, 45],
+		"shots": [12, 8]
 	},
 	"matchHash": "a3b2c1d4e5f6..."
 }
@@ -447,11 +520,12 @@ The simulation produces **IDENTICAL** results every time.
 - **Total**: < 20 KB per match
 
 **Replay Process**:
-1. Load seed + teams + events from database
+1. Load seed + teams + external events from database
 2. Initialize simulation with same seed
-3. Re-run simulation tick-by-tick
-4. Apply user inputs at stored timestamps
-5. Render or analyze as simulation progresses
+3. Sort external events by seq, pre-schedule with `match.scheduleExternal()`
+4. Re-run simulation tick-by-tick
+5. External events execute at exact queue positions
+6. Render or analyze as simulation progresses
 
 **Benefits**:
 - **6,500× smaller** file sizes

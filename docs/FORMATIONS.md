@@ -2,44 +2,49 @@
 
 ## Overview
 
-Formations define the tactical positioning structure of outfield players (goalkeepers excluded). The formation system uses **normalized team-relative coordinates** to ensure identical logic for both teams.
+Formations define the tactical positioning structure of outfield players (goalkeepers excluded). The formation system uses **normalized slot coordinates** (-1 to +1) in world space axes, combined with each team's `attackDir` vector to resolve forward/backward directions.
 
-**CRITICAL**: Formation positions use **team-relative space** with **-1 to 1 normalized coordinates** on the X and Z axes.
+**CRITICAL**: Formation slots use **world space axes** (X = goal-to-goal, Y = touchline-to-touchline) with **-1 to 1 normalized coordinates**. Each team's `attackDir` determines which direction is "forward."
+
+> **See Also**: [COORDINATES.md](./COORDINATES.md) for the authoritative coordinate system documentation.
 
 ---
 
-## Team-Relative Space for Formations
+## Formation Slot Space
 
 ### Coordinate System
 
-**Team-Relative Space** (used for formations):
+**Formation Slots** use normalized world axes:
 - **Origin (0, 0)**: Team center of mass (dynamic position based on player positions)
-- **-Z Axis**: Toward opponent goal (attacking direction) - strikers positioned here
-- **+Z Axis**: Toward own goal (defending direction) - defenders positioned here
-- **-X Axis**: Left side of field (from team perspective)
-- **+X Axis**: Right side of field (from team perspective)
+- **X Axis**: Goal-to-goal direction (-1 to +1)
+- **Y Axis**: Touchline-to-touchline direction (-1 to +1)
+
+**Attack Direction** (`attackDir`) determines team-relative meaning:
+
+| Team | attackDir | Forward (toward opponent) | Backward (toward own goal) |
+|------|-----------|---------------------------|----------------------------|
+| **Home** | `{x: 1, y: 0}` | +X direction | -X direction |
+| **Away** | `{x: -1, y: 0}` | -X direction | +X direction |
 
 **Normalized Range**: All formation positions within **-1 to 1** bounding box:
-- **X Range**: -1 (left touchline) to +1 (right touchline)
-- **Z Range**: -1 (deepest attacker) to +1 (deepest defender)
+- **X Range**: -1 to +1 (scaled by tacticalDepth)
+- **Y Range**: -1 to +1 (scaled by tacticalWidth)
 
 ### Transformation to World Space
 
-Formation positions (team-relative) transform to world space (absolute) coordinates:
+Formation slot positions transform to world space using center of mass and tactical dimensions:
 
-**Team 1** (attacks toward +Z):
-- worldX = teamCenterX + (formationX × tacticalWidth / 2)
-- worldZ = teamCenterZ + (formationZ × tacticalDepth / 2)
+**Formula**:
+```
+worldX = centerOfMassX + (slot.x × tacticalDepth / 2)
+worldY = centerOfMassY + (slot.y × tacticalWidth / 2)
+```
 
-**Team 2** (attacks toward -Z):
-- worldX = teamCenterX - (formationX × tacticalWidth / 2)  [Flip X]
-- worldZ = teamCenterZ - (formationZ × tacticalDepth / 2)  [Flip Z]
+**How Teams Differ**:
+- **Home Team**: `attackDir = {x: 1, y: 0}` - positive slot.x = forward (toward opponent)
+- **Away Team**: `attackDir = {x: -1, y: 0}` - negative slot.x = forward (toward opponent)
 
-**Why This Works**:
-- Both teams use **identical formation definitions** (same -1 to 1 coordinates)
-- **-Z always means "toward opponent goal"** for both teams
-- Team 2 transformation flips X and Z to mirror Team 1
-- No team-specific code needed - single formation system handles both
+Both teams use **identical formation definitions**. The `attackDir` vector resolves which direction is "forward" for AI decision-making.
 
 ---
 
@@ -49,16 +54,16 @@ Formation positions (team-relative) transform to world space (absolute) coordina
 
 A formation is a set of **normalized positions** for outfield players (10 players - goalkeeper excluded):
 
-**4-4-2 Formation Example**:
-- **Strikers** (attacking, -Z direction): Left striker (-0.3, -0.9), Right striker (0.3, -0.9)
-- **Midfielders**: Left winger (-0.7, -0.3), Left center mid (-0.2, 0.0), Right center mid (0.2, 0.0), Right winger (0.7, -0.3)
-- **Defenders** (defending, +Z direction): Left fullback (-0.7, 0.6), Left centerback (-0.2, 0.8), Right centerback (0.2, 0.8), Right fullback (0.7, 0.6)
+**4-4-2 Formation Example** (Home team perspective, attacking +X):
+- **Strikers** (forward, high +X): Left striker (-0.3, +0.9), Right striker (0.3, +0.9)
+- **Midfielders**: Left winger (-0.7, +0.3), Left center mid (-0.2, 0.0), Right center mid (0.2, 0.0), Right winger (0.7, +0.3)
+- **Defenders** (backward, low -X): Left fullback (-0.7, -0.6), Left centerback (-0.2, -0.8), Right centerback (0.2, -0.8), Right fullback (0.7, -0.6)
 
 **Key Points**:
-- **-Z**: Strikers positioned at z = -0.9 (toward opponent goal)
-- **+Z**: Defenders positioned at z = 0.6-0.8 (toward own goal)
-- **±X**: Wingers/fullbacks positioned at ±0.7 (toward touchlines)
-- **Center**: Center midfielders/center backs near x = 0 (center of field)
+- **High X**: Attackers positioned with higher X values (toward opponent goal for Home)
+- **Low X**: Defenders positioned with lower X values (toward own goal for Home)
+- **±Y**: Wingers/fullbacks positioned at ±0.7 (toward touchlines)
+- **Center**: Center midfielders/center backs near y = 0 (center of field)
 - **Role**: Each position has a tactical role (used for AI decision-making)
 
 ### Formation Parameters
@@ -76,7 +81,7 @@ A formation is a set of **normalized positions** for outfield players (10 player
 
 ### Center of Mass Calculation
 
-Team center of mass is the **average position of all outfield players** (excluding goalkeeper). Formula: `centerX = sum(player.x) / count`, `centerZ = sum(player.z) / count`. This becomes the (0, 0) origin in team-relative space.
+Team center of mass is the **average position of all outfield players** (excluding goalkeeper). Formula: `centerX = sum(player.x) / count`, `centerY = sum(player.y) / count`. This becomes the (0, 0) origin for formation slot positions.
 
 ### Player Target Position
 
@@ -84,8 +89,8 @@ Each player's **target position** in world space is calculated from formation po
 
 **Transformation**:
 - **Offset**: `formationPos × (tacticalSize / 2) × compactness`
-- **Team 1**: `worldPos = centerOfMass + offset` (normal)
-- **Team 2**: `worldPos = centerOfMass - offset` (flipped X and Z)
+- **Home Team**: `worldPos = centerOfMass + offset` (normal)
+- **Away Team**: `worldPos = centerOfMass - offset` (flipped X and Y)
 
 **Dynamic Positioning**:
 - Target position moves with center of mass (team attacks/defends as unit)
@@ -179,11 +184,11 @@ Different positions typically use different discipline values (guidelines, not r
 
 ### In-Possession Formation
 
-Attacking formation used when team has ball. Attackers push higher (-Z), midfielders advance, tactical width increases (e.g., 70m), tactical depth increases (e.g., 50m).
+Attacking formation used when team has ball. Attackers push higher (toward opponent goal via attackDir), midfielders advance, tactical width increases (e.g., 70m), tactical depth increases (e.g., 50m).
 
 ### Out-of-Possession Formation
 
-Defensive formation when opponent has ball. Fewer attackers (e.g., single striker at z=-0.7 instead of -0.95), midfielders drop deeper (+Z), tactical width decreases (e.g., 50m), tactical depth decreases (e.g., 35m compact block).
+Defensive formation when opponent has ball. Fewer attackers (e.g., single striker), midfielders drop deeper (toward own goal), tactical width decreases (e.g., 50m), tactical depth decreases (e.g., 35m compact block).
 
 ### Transition Logic
 
@@ -198,9 +203,9 @@ Formation selected based on team phase: `attacking` → in-possession formation,
 ### 4-4-2 (Balanced)
 
 ```
-         ST        ST          (-Z: Strikers)
+         ST        ST          (Forward: Strikers)
     LM        CM   CM       RM
-    LB    CB          CB    RB  (+Z: Defenders)
+    LB    CB          CB    RB  (Backward: Defenders)
 ```
 
 - 4 defenders, 4 midfielders, 2 strikers
@@ -210,9 +215,9 @@ Formation selected based on team phase: `attacking` → in-possession formation,
 ### 4-3-3 (Attacking)
 
 ```
-    LW        ST        RW      (-Z: Strikers)
+    LW        ST        RW      (Forward: Attackers)
          CM   CDM   CM
-    LB    CB          CB    RB  (+Z: Defenders)
+    LB    CB          CB    RB  (Backward: Defenders)
 ```
 
 - 4 defenders, 3 midfielders (1 holding), 3 attackers
@@ -222,9 +227,9 @@ Formation selected based on team phase: `attacking` → in-possession formation,
 ### 3-5-2 (Wing-backs)
 
 ```
-         ST        ST          (-Z: Strikers)
+         ST        ST          (Forward: Strikers)
     LWB  CM    CDM    CM   RWB
-        CB    CB    CB          (+Z: Defenders)
+        CB    CB    CB          (Backward: Defenders)
 ```
 
 - 3 center backs, 5 midfielders (2 wing-backs), 2 strikers
@@ -234,10 +239,10 @@ Formation selected based on team phase: `attacking` → in-possession formation,
 ### 4-2-3-1 (Possession)
 
 ```
-              ST              (-Z: Striker)
+              ST              (Forward: Striker)
     LW        CAM        RW
          CDM        CDM
-    LB    CB          CB    RB  (+Z: Defenders)
+    LB    CB          CB    RB  (Backward: Defenders)
 ```
 
 - 4 defenders, 2 holding midfielders, 3 attacking midfielders, 1 striker
@@ -260,7 +265,7 @@ All formations must include:
 
 Each position must:
 - **x**: Between -1.0 and 1.0 (inclusive)
-- **z**: Between -1.0 and 1.0 (inclusive)
+- **y**: Between -1.0 and 1.0 (inclusive)
 - **role**: Valid tactical role string
 
 ### Validation Rules
@@ -268,7 +273,7 @@ Each position must:
 **Formation Validation Requirements**:
 - Formation must have a name (string)
 - Exactly 10 positions required (outfield players only, goalkeeper excluded)
-- Each position must have valid coordinates: x and z between -1.0 and 1.0
+- Each position must have valid coordinates: x and y between -1.0 and 1.0
 - Each position must have a role (string identifier)
 - Tactical width and depth must be positive numbers (> 0)
 - Compactness must be between 0.0 and 1.0 if specified
@@ -284,14 +289,14 @@ Formation editor allows creating/modifying formations visually:
 - **2D Top-down View**: Show field with -1 to 1 grid overlay
 - **Player Markers**: Draggable markers for each position
 - **Center of Mass**: Visual indicator at (0, 0)
-- **Coordinate Display**: Show x, z coordinates for selected position
+- **Coordinate Display**: Show x, y coordinates for selected position
 - **Role Assignment**: Dropdown to assign tactical role
 
 ### Export Format
 
 Export formations with:
 - **name**: Formation name (e.g., "Custom 4-4-2")
-- **positions**: Array of position objects (x, z coordinates, role)
+- **positions**: Array of position objects (x, y coordinates, role)
 - **tacticalWidth**: Width parameter (meters)
 - **tacticalDepth**: Depth parameter (meters)
 - **compactness**: Compactness parameter (0.0-1.0)
@@ -305,12 +310,11 @@ Imported formations validated before use (see Validation Function above).
 ## Summary
 
 **Formation System Architecture**:
-- **Team-Relative Space**: -1 to 1 normalized coordinates (X and Z)
-- **-Z = Attacking**: Strikers positioned toward opponent goal
-- **+Z = Defending**: Defenders positioned toward own goal
+- **Formation Slots**: -1 to 1 normalized coordinates in world axes (X and Y)
+- **attackDir Vector**: Determines forward direction (Home = +X, Away = -X)
 - **Origin (0, 0)**: Team center of mass (dynamic)
-- **Transformation**: Team 1 normal, Team 2 flips X and Z
-- **Identical Logic**: Both teams use same formation definitions
+- **Transformation**: Slot positions scaled by tacticalWidth/tacticalDepth + center of mass offset
+- **Identical Logic**: Both teams use same formation definitions, attackDir resolves directions
 
 **Dynamic Positioning**:
 - Target positions move with center of mass

@@ -9,16 +9,6 @@
 /// <reference types="vite/client" />
 
 /**
- * Declare .vue file modules for TypeScript
- * Allows importing Vue Single File Components in TypeScript files
- */
-declare module '*.vue' {
-	import type { DefineComponent } from 'vue'
-	const component: DefineComponent<object, object, any>
-	export default component
-}
-
-/**
  * Declare markdown file imports as raw strings (Vite ?raw suffix)
  */
 declare module '*.md?raw' {
@@ -30,7 +20,7 @@ declare module '*.md?raw' {
  * Extend Vue's global properties with custom plugins
  */
 import 'vue'
-import type * as constants from '@/utils/constants'
+import type * as constants from '@/constants'
 
 declare module 'vue' {
 	interface ComponentCustomProperties {

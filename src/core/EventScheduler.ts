@@ -7,6 +7,8 @@
  * See LICENSE.md in the project root for license terms.
  */
 
+import type { ExternalEventPayload } from '@/core/ExternalEventTypes'
+
 /**
  * Event Scheduler Architecture
  *
@@ -26,12 +28,11 @@
  *
  * # Scheduling Rules
  *
- * - Events CANNOT be scheduled on current tick (minimum is tick + 1, even when idle)
- * - Events are processed in priority order by EventType (lower value = higher priority)
- * - We do NOT keep sequence numbers: identical tick/type pairs may execute in any order
+ * - All scheduling is OFFSET-BASED: callers specify "how many ticks in the future" (tickOffset >= 0)
+ * - Events can be scheduled on current tick (tickOffset = 0) or any future tick
+ * - Events are processed sequentially in the order they were scheduled
+ * - Sequence numbers provide deterministic FIFO ordering for events at the same tick
  * - Cannot pause mid-tick (pause() waits for current tick to complete)
- * - Events within same tick/type execute sequentially (one at a time)
- * - Illegal to enqueue event for current tick during execution
  * - Once tick finishes, current tick increments immediately
  *
  * # Event Processing
@@ -45,24 +46,25 @@
  *
  * 1. **EventScheduler (Base Class)**
  *    - Min-heap priority queue implementation
- *    - Single execution primitive: runUntil(targetTick)
+ *    - Single execution primitive: advance(ticks)
  *    - No pause/resume/start/stop state management
- *    - Hard validation: throws on invalid tick values, types, or scheduler ownership
+ *    - Hard validation: throws on invalid tickOffset values or scheduler ownership
  *    - Optimized for dynamic ticks (often single event per tick)
- *    - Provides helpers: scheduleOnNextTick() / scheduleOnOffset() for convenience
+ *    - Offset-based scheduling: schedule(tickOffset, type, callback)
+ *    - Sequence numbers ensure deterministic FIFO ordering for events
  *
  * 2. **RealTimeScheduler (Wrapper)**
- *    - Real-time run/pause/resume/stop controls
+ *    - Real-time run/stop controls (no pause/resume)
  *    - Speed control: 0.1x (slow motion) to 100x+ (fast forward)
- *    - Uses await wait(delay) + catch-up loops
- *    - pause() returns Promise that resolves after current tick completes
- *    - Handles setTimeout/setInterval ~15ms overhead with catch-up mechanism
+ *    - Uses wait(0)/wait(4) backoff with catch-up loops
+ *    - Auto-stops when the queue drains to empty
+ *    - Handles setTimeout/setInterval ~4–15ms overhead with catch-up mechanism
  *
  * 3. **HeadlessScheduler (Wrapper)**
  *    - Instant result simulation (as fast as possible)
  *    - No pause feature (runs start-to-finish)
  *    - Can continue from existing scheduler state (player clicks "Instant Results")
- *    - Runs runUntil(Infinity) in tight loop
+ *    - Runs runUntilEnd() to drain entire queue
  *    - Optional yielding with await Promise.resolve() every N ticks for responsiveness
  *    - Avoids unnecessary checks and allocations on hot path
  *
@@ -85,54 +87,115 @@
  * # Usage Patterns
  *
  * @example
- * // Basic scheduling
+ * // Basic scheduling (offset-based)
  * const scheduler = new EventScheduler()
- * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (tick) => {
- *   console.log('Ball physics at tick', tick)
+ * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (event) => {
+ *   console.log('Ball physics 100ms from now at tick', event.tick)
  * })
  *
- * // Convenience helper (schedule for next tick)
- * scheduler.scheduleOnNextTick(EventType.PLAYER_AI, (tick) => {
- *   console.log('Player AI at tick', tick)
+ * // Schedule on next tick (offset of 1)
+ * scheduler.schedule(1, EventType.PLAYER_AI, (event) => {
+ *   console.log('Player AI at tick', event.tick)
  * })
  *
- * // Offset helper (schedule relative to current tick)
- * scheduler.scheduleOnOffset(60, EventType.VISION, (tick) => {
- *   console.log('Scan field one simulated minute later', tick)
+ * // Schedule 60 ticks (60ms) in the future
+ * scheduler.schedule(60, EventType.VISION, (event) => {
+ *   console.log('Scan field one simulated minute later', event.tick)
  * })
  *
- * // Event manipulation
- * event.reschedule(150)  // Move to different tick
+ * // Event manipulation (reschedule from within callback)
+ * scheduler.schedule(100, EventType.BALL_PHYSICS, (event) => {
+ *   if (needsMoreTime) {
+ *     event.reschedule(10)  // Reschedule 10 ticks from now
+ *   }
+ * })
+ *
+ * // Or reschedule externally
+ * event.reschedule(150)  // Move to 150 ticks from current tick
  * event.cancel()         // Remove from queue
  *
- * // Run simulation
- * await scheduler.runUntil(200)  // Process all events up to tick 200
+ * // Run simulation (offset-based)
+ * await scheduler.advance(200)  // Process next 200 ticks from current position
  *
  * @see EVENT_SCHEDULER_REQUIREMENTS.md for complete specification
  */
 
 /**
  * Event callback function signature
+ *
+ * @param event - The scheduled event being executed, providing access to tick, type, and reschedule capability
  */
-export type EventCallback<T = unknown> = (tick: number, payload: T) => void | Promise<void>
+export type EventCallback = (event: ScheduledEvent) => void | Promise<void>
+
+/**
+ * Type for the exclusive scheduleExternal function.
+ *
+ * This is the return type of EventScheduler.getExclusiveScheduleExternalFn().
+ * Match uses this to store the bound function for scheduling external events.
+ */
+export type ScheduleExternalFn = (
+	tickOffset: number,
+	data: ExternalEventPayload,
+	callback: EventCallback,
+) => ScheduledEvent
+
+/**
+ * Maximum tick value for "run until end" operations.
+ *
+ * This value stays within V8's SMI (Small Integer) range (~1 billion / (2³⁰ - 1 = 1,073,741,823))
+ * to ensure all tick comparisons use fast integer math instead of floating-point.
+ *
+ * 100 million ticks = ~27.7 hours of simulated time, far exceeding any match duration.
+ * A 90-minute match only needs ~5.4 million ticks.
+ * Use 100 million as "infinity" - way more than any match needs, and stays within SMI for fast integer math.
+ */
+const MAX_TICK = 100_000_000
+
+/**
+ * Starting sequence number for simulation events.
+ *
+ * Simulation events (AI, physics, etc.) use seq numbers starting at 1,000,000.
+ * External events (substitutions, tactics, shouts) use seq numbers 0 to 999,999.
+ * This ensures external events always execute FIRST within a tick (lower seq wins).
+ */
+const SEQ_SIMULATION_START = 1_000_000
 
 /**
  * Event Types
  *
- * Values define priority order (lower = higher priority).
- * Critical for ensuring ball physics updates before player AI/vision.
+ * Used for event identification, inspection, and logging.
+ * Simulation events (AI, physics) use these types directly.
+ * External events (human input only) use EXTERNAL type internally.
  */
-export enum EventType {
-	BALL_PHYSICS = 0,
-	PLAYER_PHYSICS = 1,
-	VISION = 2,
-	SHOUT = 3,
-	PLAYER_AI = 4,
-	HEAD_AI = 5,
-	HEAD_PHYSICS = 6,
-	TACTICAL_CHANGE = 7,
-	REFEREE = 8,
-	OTHER = 9,
+export const enum EventType {
+	BALL_PHYSICS,
+	PLAYER_PHYSICS,
+	VISION,
+	SHOUT,
+	PLAYER_AI,
+	HEAD_AI,
+	HEAD_PHYSICS,
+	TACTICAL_CHANGE,
+	SUBSTITUTION,
+	REFEREE,
+	/**
+	 * External event type (human input only).
+	 *
+	 * This type is used internally by scheduleExternal() for all external events.
+	 * The specific event type (substitution, tactical, shout) is determined by
+	 * the ExternalEventPayload.type field in the event data.
+	 *
+	 * External events are EXCLUSIVELY for human input - AI decisions are
+	 * deterministic (seeded PRNG) and don't use this type.
+	 *
+	 * External events use reserved sequence numbers (0 to 999,999) to ensure
+	 * they execute FIRST within their tick, before any simulation events.
+	 */
+	EXTERNAL,
+	/**
+	 * Generic event type for debugging and testing.
+	 */
+	DEBUG,
 }
 
 /**
@@ -142,30 +205,43 @@ export enum EventType {
  * Provides methods for cancellation and rescheduling.
  *
  * @example
- * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (tick) => {
- *   console.log('Ball physics at tick', tick)
+ * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (event) => {
+ *   console.log('Ball physics 100ms from now at tick', event.tick)
+ *   // Can reschedule from within callback
+ *   if (needsMoreProcessing) {
+ *     event.reschedule(5)  // Reschedule 5 ticks from now
+ *   }
  * })
  *
- * // Reschedule to different tick
+ * // Reschedule to different offset (150 ticks from current tick)
  * event.reschedule(150)
  *
  * // Cancel event
  * event.cancel()
  */
-class ScheduledEvent<T = unknown> {
+class ScheduledEvent {
 	tick: number
 	type: EventType
-	callback: EventCallback<T>
-	payload: T
+	callback: EventCallback
+	data: unknown
 	heapIndex: number
+	seq: number
 	#scheduler: EventScheduler
 
-	constructor(tick: number, type: EventType, callback: EventCallback<T>, payload: T, scheduler: EventScheduler) {
+	constructor(
+		tick: number,
+		type: EventType,
+		callback: EventCallback,
+		seq: number,
+		scheduler: EventScheduler,
+		data?: unknown,
+	) {
 		this.tick = tick
 		this.type = type
 		this.callback = callback
-		this.payload = payload
+		this.data = data
 		this.heapIndex = -1
+		this.seq = seq
 		this.#scheduler = scheduler
 	}
 
@@ -181,32 +257,14 @@ class ScheduledEvent<T = unknown> {
 	}
 
 	/**
-	 * Reschedule event to different tick
+	 * Reschedule event to different offset from current tick
 	 *
-	 * @param newTick - New future tick value (must be > current tick)
-	 * @param payload - Optional new payload value for event
+	 * @param tickOffset - Non-negative integer offset from current tick (>= 0)
 	 * @returns true if rescheduled successfully
-	 * @throws {Error} If newTick is invalid
+	 * @throws {Error} If tickOffset is invalid
 	 */
-	reschedule(newTick: number, payload?: T): boolean {
-		if (arguments.length >= 2) {
-			return this.#scheduler.reschedule(this, newTick, payload)
-		}
-		return this.#scheduler.reschedule(this, newTick)
-	}
-
-	/**
-	 * Convenience helper to reschedule relative to the current tick.
-	 *
-	 * @param offset Positive integer offset added to scheduler current tick
-	 * @param payload Optional new payload value
-	 * @returns true if rescheduled successfully
-	 */
-	rescheduleOnOffset(offset: number, payload?: T): boolean {
-		if (arguments.length >= 2) {
-			return this.#scheduler.rescheduleOnOffset(this, offset, payload)
-		}
-		return this.#scheduler.rescheduleOnOffset(this, offset)
+	reschedule(tickOffset: number): boolean {
+		return this.#scheduler.reschedule(this, tickOffset)
 	}
 
 	/**
@@ -227,124 +285,238 @@ class ScheduledEvent<T = unknown> {
 /**
  * Base event scheduler using min-heap priority queue
  *
- * Processes events sequentially by tick and priority (EventType).
+ * Processes events sequentially by tick and sequence order.
  * No pause/resume state management - use RealTimeScheduler wrapper for that.
+ * All scheduling is offset-based for simplicity and determinism.
  *
  * @example
  * const scheduler = new EventScheduler()
- * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (tick) => {
- *   console.log('Ball physics at tick', tick)
+ * const event = scheduler.schedule(100, EventType.BALL_PHYSICS, (event) => {
+ *   console.log('Ball physics 100ms from now at tick', event.tick)
+ *   // Access to event allows self-rescheduling
+ *   event.reschedule(10)  // Reschedule 10 ticks from now
  * })
- * await scheduler.runUntil(200)
+ * await scheduler.advance(200)  // Advance 200 ticks from current position
  */
 export class EventScheduler {
 	/**
-	 * Current tick value - the tick that will be processed next by runUntil().
+	 * Current tick value - the tick that will be processed next by advance().
 	 *
 	 * IMPORTANT: This represents the NEXT tick to be executed, not the last completed tick.
-	 * Even if the scheduler is idle, we enforce a strict "future-only" policy: callers
-	 * must always schedule on currentTick + 1 or later. This keeps the API consistent and
-	 * avoids edge cases where callers would have to know whether the scheduler is running.
+	 * With offset-based scheduling, callers can use tickOffset >= 0 (including 0 for current tick).
+	 * Sequence numbers ensure deterministic ordering when multiple events target the same tick.
 	 *
 	 * Example timeline:
-	 * - Scheduler created: currentTick = 0 (first valid tick to schedule = 1)
-	 * - During tick 50 processing: currentTick = 50 (next valid tick = 51)
-	 * - After runUntil(100) completes: currentTick = 100 (next valid tick = 101)
+	 * - Scheduler created: currentTick = 0 (tickOffset = 0 schedules to tick 0, tickOffset = 1 to tick 1)
+	 * - During tick 50 processing: currentTick = 50 (tickOffset = 0 schedules to tick 50, tickOffset = 1 to tick 51)
+	 * - After advance(100) completes: currentTick = 100 (advanced 100 ticks from previous position)
 	 */
 	#currentTick: number = 0
-	#heap: ScheduledEvent<any>[] = []
+	#heap: ScheduledEvent[] = []
 	#running: boolean = false
-
-	constructor() {}
+	#seq: number = SEQ_SIMULATION_START
 
 	/**
-	 * Convenience helper that schedules one tick in the future.
+	 * External event sequence counter.
 	 *
-	 * @template T
-	 * @param {EventType} type Event priority type
-	 * @param {EventCallback<T>} callback Function executed next tick
-	 * @param {T} [payload] Optional payload passed to callback
-	 * @returns {ScheduledEvent<T>} Handle to the newly scheduled event
+	 * External events (substitutions, tactics, shouts) use seq numbers 0 to 999,999.
+	 * This counter auto-increments for each external event scheduled.
 	 */
-	scheduleOnNextTick<T = unknown>(type: EventType, callback: EventCallback<T>, payload?: T): ScheduledEvent<T> {
-		return this.schedule(this.#currentTick + 1, type, callback, payload)
+	#externalSeq: number = 0
+
+	/**
+	 * Minimum tick for external event scheduling.
+	 *
+	 * External events cannot be injected into a tick that has already passed.
+	 * This value tracks the earliest tick that external events can target.
+	 *
+	 * - When a tick starts draining: bumped to tick + 1 (can't inject mid-tick)
+	 * - After advance() completes: set to targetTick (can't schedule in the past)
+	 *
+	 * scheduleExternal() uses: actualTick = #minExternalTick + tickOffset
+	 *
+	 * Before simulation starts: #minExternalTick = 0 (allows pre-scheduling at tick 0)
+	 * After advance(1000): #minExternalTick = 1000 (tickOffset=0 means tick 1000)
+	 */
+	#minExternalTick: number = 0
+
+	/**
+	 * Flag to enforce single-owner pattern for external event scheduling.
+	 *
+	 * The scheduleExternal function can only be retrieved ONCE via
+	 * getExclusiveScheduleExternalFn(). This ensures that only one owner
+	 * (typically the Match class) can schedule external events, which is
+	 * critical for:
+	 *
+	 * 1. Centralized recording: All external events must be recorded in
+	 *    Match.externalEvents[] for deterministic replay
+	 * 2. Preventing bypass: No code can accidentally schedule external events
+	 *    without them being recorded
+	 * 3. Clear ownership: Makes it explicit that Match owns external event
+	 *    scheduling, not arbitrary code with scheduler access
+	 */
+	#scheduleExternalFnRetrieved: boolean = false
+
+	/**
+	 * Optional callback fired when the scheduler advances to a new tick.
+	 *
+	 * Called once per tick during advance(), AFTER all events for that tick
+	 * have been processed. Only fires for ticks that actually had events.
+	 *
+	 * This is primarily useful for RealTimeScheduler to update UI/state.
+	 * HeadlessScheduler can leave this unset for zero overhead.
+	 *
+	 * @param tick - The tick that was just completed
+	 */
+	onTick?: (tick: number) => void
+
+	constructor() {
+		// ═══════════════════════════════════════════════════════════
+		//                  S E A L   I N S T A N C E
+		// ═══════════════════════════════════════════════════════════
+
+		Object.seal(this)
 	}
 
 	/**
-	 * Schedule an event on a tick offset relative to the current tick.
+	 * Schedule a new event at an offset from the current tick.
 	 *
-	 * @template T
-	 * @param {number} offset Positive integer offset added to current tick
-	 * @param {EventType} type Event priority type
-	 * @param {EventCallback<T>} callback Function executed at the offset tick
-	 * @param {T} [payload] Optional payload passed to callback
-	 * @returns {ScheduledEvent<T>} Handle to the newly scheduled event
+	 * The offset is added to the current tick to determine the absolute tick value.
+	 * This is the primary scheduling method - callers should always think in terms
+	 * of "how many ticks in the future" rather than absolute tick values.
+	 *
+	 * @param {number} tickOffset Non-negative integer offset from current tick (>= 0)
+	 * @param {EventType} type Event type for reference and logging
+	 * @param {EventCallback} callback Function invoked when the event fires
+	 * @param {unknown} [data] Optional payload accessible via event.data in callback
+	 * @returns {ScheduledEvent} Handle for later cancellation/rescheduling
+	 * @throws {Error} If tickOffset is not a non-negative integer or callback is not a function
 	 */
-	scheduleOnOffset<T = unknown>(offset: number, type: EventType, callback: EventCallback<T>, payload?: T): ScheduledEvent<T> {
-		if (!Number.isInteger(offset) || offset <= 0) {
-			throw new Error('Offset must be a positive integer')
+	schedule(tickOffset: number, type: EventType, callback: EventCallback, data?: unknown): ScheduledEvent {
+		if (__DEBUG__) {
+			if (!Number.isInteger(tickOffset) || tickOffset < 0) {
+				throw new Error('tickOffset must be a non-negative integer (>= 0)')
+			}
+			if (!Number.isInteger(type) || type < 0 || type > EventType.DEBUG) {
+				throw new Error(`Invalid event type: ${type}`)
+			}
+			if (typeof callback !== 'function') {
+				throw new Error('Event callback must be a function')
+			}
 		}
-		return this.schedule(this.#currentTick + offset, type, callback, payload)
+
+		const tick = this.#currentTick + tickOffset
+		const seq = this.#seq++
+		const event = new ScheduledEvent(tick, type, callback, seq, this, data)
+		this.#heapPush(event)
+
+		return event
 	}
 
 	/**
-	 * Schedule a new event on a future tick.
+	 * Get exclusive access to the scheduleExternal function.
 	 *
-	 * Validates all arguments up front, enforcing the "future-only" policy and
-	 * ensuring the callback is a function before touching the heap. Callers can
-	 * optionally attach a payload that will be passed through to the callback.
+	 * This method can only be called ONCE. It returns a bound function that
+	 * schedules external events (manager inputs) with the reserved sequence
+	 * number range.
 	 *
-	 * @template T Payload type stored with the event
-	 * @param {number} tick Future tick value (must be > current tick)
-	 * @param {EventType} type Event priority used for ordering
-	 * @param {EventCallback<T>} callback Function invoked when the event fires
-	 * @param {T} [payload] Optional payload forwarded to the callback
-	 * @returns {ScheduledEvent<T>} Handle for later cancellation/rescheduling
-	 * @throws {Error} If tick is not future, type is invalid, or callback is not a function
+	 * # Single-Owner Pattern
+	 *
+	 * The returned function should be stored by a single owner (typically Match)
+	 * that is responsible for:
+	 * 1. Recording all external events for deterministic replay
+	 * 2. Providing a public interface (e.g., match.scheduleExternal()) that
+	 *    both schedules AND records the event
+	 *
+	 * This pattern ensures no code can bypass the recording mechanism by
+	 * calling scheduler.scheduleExternal() directly.
+	 *
+	 * # Usage
+	 *
+	 * @example
+	 * // In Match constructor:
+	 * this.#scheduleExternalFn = scheduler.getExclusiveScheduleExternalFn()
+	 *
+	 * // Match provides public method:
+	 * scheduleExternal(tickOffset, data, callback) {
+	 *     const event = this.#scheduleExternalFn(tickOffset, data, callback)
+	 *     this.externalEvents.push({ tick: event.tick, seq: event.seq, data })
+	 *     return event
+	 * }
+	 *
+	 * @returns Bound function: (tickOffset, data, callback) => ScheduledEvent
+	 * @throws {Error} If called more than once
 	 */
-	schedule<T = unknown>(tick: number, type: EventType, callback: EventCallback<T>, payload?: T): ScheduledEvent<T> {
-		this.#assertTick(tick)
-		if (tick <= this.#currentTick) {
-			throw new Error('Events must be scheduled in the future (tick + 1 or greater)')
+	getExclusiveScheduleExternalFn(): (tickOffset: number, data: ExternalEventPayload, callback: EventCallback) => ScheduledEvent {
+		if (this.#scheduleExternalFnRetrieved) {
+			throw new Error(
+				'scheduleExternal function already retrieved. ' +
+				'Only one owner (Match) should schedule external events to ensure proper recording.',
+			)
 		}
-		if (!Number.isInteger(type) || type < 0 || type >= EventType.OTHER + 1) {
-			throw new Error(`Invalid event type: ${type}`)
+		this.#scheduleExternalFnRetrieved = true
+
+		return this.#scheduleExternal.bind(this)
+	}
+
+	/**
+	 * Schedule an external event (manager input) at an offset from the earliest safe tick.
+	 *
+	 * This is a PRIVATE method. Access via getExclusiveScheduleExternalFn().
+	 *
+	 * External events (substitutions, tactical changes, shouts) use a reserved sequence
+	 * number range (0 to 999,999) to ensure they always execute FIRST within a tick,
+	 * before any simulation events.
+	 *
+	 * The tickOffset is relative to #minExternalTick (NOT currentTick):
+	 * - Before simulation starts: #minExternalTick = 0, so tickOffset = absolute tick
+	 * - During tick N: #minExternalTick = N + 1, so tickOffset = 0 means "next tick"
+	 *
+	 * This prevents mid-tick injection which would break deterministic replay.
+	 *
+	 * @param tickOffset Non-negative integer offset from earliest safe tick (>= 0)
+	 * @param data External event payload (required) - contains type and event-specific data
+	 * @param callback Function invoked when the event fires
+	 * @returns ScheduledEvent with actual tick in event.tick (for recording)
+	 * @throws {Error} If tickOffset is invalid or callback is not a function
+	 */
+	#scheduleExternal(tickOffset: number, data: ExternalEventPayload, callback: EventCallback): ScheduledEvent {
+		if (!Number.isInteger(tickOffset) || tickOffset < 0) {
+			throw new Error('tickOffset must be a non-negative integer (>= 0)')
 		}
 		if (typeof callback !== 'function') {
 			throw new Error('Event callback must be a function')
 		}
 
-		const event = new ScheduledEvent(tick, type, callback, payload as T, this)
+		const tick = this.#minExternalTick + tickOffset
+		const seq = this.#externalSeq++
+		const event = new ScheduledEvent(tick, EventType.EXTERNAL, callback, seq, this, data)
 		this.#heapPush(event)
+
 		return event
 	}
 
 	/**
-	 * Move an existing event to a different future tick.
+	 * Move an existing event to a different offset from the current tick.
 	 *
-	 * The event must belong to this scheduler and remain scheduled. Payload can be
-	 * replaced by supplying the third argument; to clear it, pass `undefined`
-	 * explicitly. The heap is adjusted in-place without reallocating the event.
+	 * The event must belong to this scheduler and remain scheduled.
+	 * The heap is adjusted in-place without reallocating the event.
 	 *
-	 * @template T Payload type stored with the event
-	 * @param {ScheduledEvent<T>} event Handle returned from schedule()
-	 * @param {number} newTick New future tick value (> current tick)
-	 * @param {T} [payload] Optional new payload to store with the event
+	 * @param {ScheduledEvent} event Handle returned from schedule()
+	 * @param {number} tickOffset Non-negative integer offset from current tick (>= 0)
 	 * @returns {boolean} true when rescheduled, false is never returned
-	 * @throws {Error} If the event is foreign/cleared or newTick is invalid/past
+	 * @throws {Error} If the event is foreign/cleared or tickOffset is invalid
 	 */
-	reschedule<T = unknown>(event: ScheduledEvent<T>, newTick: number, payload?: T): boolean {
+	reschedule(event: ScheduledEvent, tickOffset: number): boolean {
 		const target = this.#ensureOwnedEvent(event)
-		this.#assertTick(newTick)
-		if (newTick <= this.#currentTick) {
-			throw new Error('Cannot reschedule event on or before current tick')
+		if (!Number.isInteger(tickOffset) || tickOffset < 0) {
+			throw new Error('tickOffset must be a non-negative integer (>= 0)')
 		}
 
+		const newTick = this.#currentTick + tickOffset
 		const oldTick = target.tick
 		target.tick = newTick
-		if (arguments.length >= 3) {
-			target.payload = payload as T
-		}
+		target.seq = this.#seq++ // Assign new sequence number for deterministic ordering
 
 		if (target.heapIndex === -1) {
 			this.#heapPush(target)
@@ -361,32 +533,13 @@ export class EventScheduler {
 	}
 
 	/**
-	 * Reschedule an event by offset relative to the current tick.
-	 *
-	 * @template T
-	 * @param {ScheduledEvent<T>} event Event handle from schedule()
-	 * @param {number} offset Positive integer offset from current tick
-	 * @param {T} [payload] Optional new payload
-	 * @returns {boolean} true once rescheduled
-	 */
-	rescheduleOnOffset<T = unknown>(event: ScheduledEvent<T>, offset: number, payload?: T): boolean {
-		if (!Number.isInteger(offset) || offset <= 0) {
-			throw new Error('Offset must be a positive integer')
-		}
-		if (arguments.length >= 3) {
-			return this.reschedule(event, this.#currentTick + offset, payload)
-		}
-		return this.reschedule(event, this.#currentTick + offset)
-	}
-
-	/**
 	 * Cancel a pending event.
 	 *
-	 * @param {ScheduledEvent<any>} event Handle obtained from schedule()
+	 * @param {ScheduledEvent} event Handle obtained from schedule()
 	 * @returns {boolean} true if the event was removed, false if it already fired/was cancelled
 	 * @throws {Error} When the handle originated from a different scheduler
 	 */
-	cancel(event: ScheduledEvent<any>): boolean {
+	cancel(event: ScheduledEvent): boolean {
 		const target = this.#ensureOwnedEvent(event)
 		if (target.heapIndex === -1) return false
 		this.#heapRemove(target.heapIndex)
@@ -403,36 +556,34 @@ export class EventScheduler {
 		}
 		this.#currentTick = 0
 		this.#running = false
+		this.#seq = SEQ_SIMULATION_START
+		this.#externalSeq = 0
+		this.#minExternalTick = 0
 	}
 
 	/**
-	 * Process events until (but not including) the requested tick.
+	 * Process events for the specified number of ticks from the current tick.
 	 *
-	 * Headless callers should prefer {@link runUntilEnd}. For finite targets the
-	 * scheduler drains everything at or before the tick, then sets
-	 * `#currentTick = targetTick` so clients can schedule relative to the exact
+	 * This is an offset-based method: it advances the scheduler by `ticks` from the current position.
+	 * The scheduler drains all events at or before `currentTick + ticks`, then sets
+	 * `#currentTick` to that boundary so clients can schedule relative to the exact
 	 * boundary they requested.
 	 *
-	 * @param {number} targetTick Tick to run up to (exclusive)
-	 * @returns {Promise<void>} Resolves when all eligible events are processed
-	 * @throws {Error} If the scheduler is already running or asked to go backward
+	 * Headless callers should prefer {@link runUntilEnd}.
+	 *
+	 * @param {number} ticks Number of ticks to advance from current tick (>= 0)
+	 * @returns {Promise<boolean>} Resolves to true if pending events remain after the drain,
+	 *   or false if the queue was fully drained up to the target boundary
+	 * @throws {Error} If the scheduler is already running or ticks is negative
 	 */
-	async runUntil(targetTick: number): Promise<void> {
-		if (this.#running) {
-			throw new Error('EventScheduler is already running')
-		}
-		if (targetTick === Infinity) {
-			await this.runUntilEnd()
-			return
-		}
+	async advance(ticks: number): Promise<boolean> {
+		this.#assertTick(ticks)
 
-		this.#assertTick(targetTick)
-		if (targetTick < this.#currentTick) {
+		if (ticks < 0) {
 			throw new Error('Cannot run backwards in time')
 		}
 
-		await this.#drainUntil(targetTick)
-		this.#currentTick = targetTick
+		return this.#drainUntil(this.#currentTick + ticks)
 	}
 
 	/**
@@ -441,44 +592,79 @@ export class EventScheduler {
 	 * Used by headless execution to sprint to the end without pausing at arbitrary
 	 * boundaries. Mutates `#currentTick` to the last processed tick.
 	 *
-	 * @returns {Promise<void>} Resolves when the heap is empty
+	 * @returns {Promise<boolean>} Resolves to true if pending events remain (rare),
+	 *   or false if the queue was fully drained
 	 * @throws {Error} If the scheduler is already running
 	 */
-	async runUntilEnd(): Promise<void> {
+	async runUntilEnd(): Promise<boolean> {
+		return this.#drainUntil(MAX_TICK)
+	}
+
+	/**
+	 * Internal helper: process events while the next tick is <= targetTick.
+	 *
+	 * NOTE: This internal method uses ABSOLUTE tick values, unlike the public
+	 * advance() which is offset-based.
+	 *
+	 * @param {number} targetTick Absolute tick value - highest tick allowed to execute
+	 * @returns {Promise<boolean>} Resolves to true if pending events remain after the drain,
+	 *   or false if the queue was fully drained up to the target boundary
+	 * @private
+	 */
+	async #drainUntil(targetTick: number): Promise<boolean> {
 		if (this.#running) {
 			throw new Error('EventScheduler is already running')
 		}
 
-		await this.#drainUntil(Number.MAX_SAFE_INTEGER)
-	}
-
-	/**
-	 * Internal helper: process events while the next tick is <= limitTick.
-	 *
-	 * @param {number} limitTick Highest tick allowed to execute
-	 * @returns {Promise<void>} Resolves when no eligible events remain
-	 * @private
-	 */
-	async #drainUntil(limitTick: number): Promise<void> {
 		this.#running = true
 
 		try {
 			while (this.#heap.length > 0) {
 				const nextTick = this.#heap[0].tick
-				if (nextTick > limitTick) {
+				if (nextTick > targetTick) {
 					break
 				}
 
 				this.#currentTick = nextTick
+				// Bump minExternalTick BEFORE processing events for this tick
+				// External events scheduled during this tick will go to nextTick + 1
+				this.#minExternalTick = nextTick + 1
 
 				do {
 					const event = this.#heapPop()
-					await event.callback(nextTick, event.payload)
+					await event.callback(event)
 				} while (this.#heap.length > 0 && this.#heap[0].tick === nextTick)
+
+				// Notify tick completion (primarily for RealTimeScheduler UI updates)
+				if (this.onTick) this.onTick(nextTick)
 			}
+
+			// Always advance currentTick to targetTick, even if queue drained early
+			this.#currentTick = targetTick
+			// Keep minExternalTick in sync - external events can't go to past ticks
+			this.#minExternalTick = targetTick
 		} finally {
 			this.#running = false
 		}
+
+		return this.#heap.length > 0
+	}
+
+	/**
+	 * Get delta time in seconds from a given tick to the current tick.
+	 *
+	 * @param {number} time Tick value to measure from
+	 * @returns {number} Delta time in seconds (can be negative if time > currentTick)
+	 */
+	getDeltaTimeFrom(time: number): number {
+		return (this.#currentTick - time) / 1000
+	}
+
+	/**
+	 * Number of events currently in the queue.
+	 */
+	get eventCount(): number {
+		return this.#heap.length
 	}
 
 	/**
@@ -491,12 +677,19 @@ export class EventScheduler {
 	/**
 	 * Current tick value (represents the next event boundary).
 	 */
-	get tick(): number {
+	get currentTick(): number {
 		return this.#currentTick
 	}
 
 	/**
-	 * Whether runUntil/runUntilEnd is currently executing.
+	 * Tick setter disabled - use advance() instead
+	 */
+	set currentTick(_value: number) {
+		throw new Error('Cannot set current tick directly. Just add some events to a future tick and the scheduler will run from that point.')
+	}
+
+	/**
+	 * Whether advance/runUntilEnd is currently executing.
 	 */
 	get running(): boolean {
 		return this.#running
@@ -524,10 +717,16 @@ export class EventScheduler {
 	}
 
 	/**
-	 * Tick setter disabled - use runUntil() instead
+	 * Minimum tick at which external events can be scheduled.
+	 *
+	 * - Before simulation starts: 0 (allows pre-scheduling at tick 0)
+	 * - During tick N processing: N + 1 (can't inject mid-tick)
+	 * - After advance(X) completes: X (can't schedule in the past)
+	 *
+	 * scheduleExternal(tickOffset) schedules at: minExternalTick + tickOffset
 	 */
-	set tick(_value: number) {
-		throw new Error('Cannot set tick directly')
+	get minExternalTick(): number {
+		return this.#minExternalTick
 	}
 
 	#assertTick(value: number): void {
@@ -536,20 +735,21 @@ export class EventScheduler {
 		}
 	}
 
-	#ensureOwnedEvent<T>(event: ScheduledEvent<T>): ScheduledEvent<T> {
+	#ensureOwnedEvent(event: ScheduledEvent): ScheduledEvent {
 		if (!event || event.scheduler !== this) {
 			throw new Error('Event does not belong to this scheduler')
 		}
+
 		return event
 	}
 
-	#heapPush(event: ScheduledEvent<any>): void {
+	#heapPush(event: ScheduledEvent): void {
 		event.heapIndex = this.#heap.length
 		this.#heap.push(event)
 		this.#bubbleUp(event.heapIndex)
 	}
 
-	#heapPop(): ScheduledEvent<any> {
+	#heapPop(): ScheduledEvent {
 		const root = this.#heap[0]
 		const last = this.#heap.pop()!
 
@@ -558,8 +758,8 @@ export class EventScheduler {
 			last.heapIndex = 0
 			this.#bubbleDown(0)
 		}
-
 		root.heapIndex = -1
+
 		return root
 	}
 
@@ -573,23 +773,14 @@ export class EventScheduler {
 			this.#heap[index] = last
 			last.heapIndex = index
 
-			let lastLessRemoved = last.tick < removed.tick
-			if (last.tick === removed.tick) {
-				if (last.type !== removed.type) {
-					lastLessRemoved = last.type < removed.type
-				} else {
-					lastLessRemoved = false
-				}
-			}
+			// Determine direction using same logic as #less() for consistency
+			const lastLessThanRemoved = last.tick < removed.tick ||
+				(last.tick === removed.tick && last.seq < removed.seq)
 
-			if (lastLessRemoved) {
+			if (lastLessThanRemoved) {
 				this.#bubbleUp(index)
-			} else if (last.tick > removed.tick) {
-				this.#bubbleDown(index)
 			} else {
-				if (last.type > removed.type) {
-					this.#bubbleDown(index)
-				}
+				this.#bubbleDown(index)
 			}
 		}
 
@@ -628,8 +819,8 @@ export class EventScheduler {
 		const a = this.#heap[i]
 		const b = this.#heap[j]
 		if (a.tick !== b.tick) return a.tick < b.tick
-		if (a.type !== b.type) return a.type < b.type
-		return false // No FIFO guarantee: identical tick/type pairs are interchangeable
+
+		return a.seq < b.seq // Deterministic FIFO: sequence number breaks ties
 	}
 
 	#swap(i: number, j: number): void {

@@ -17,12 +17,10 @@
 			</template>
 
 			<div class="license-content">
-				<pre>
-					<ElScrollbar height="800px">
-						<!-- eslint-disable-next-line vue/no-v-html -->
-						<div class="license-text" v-html="licenseText" />
-					</ElScrollbar>
-				</pre>
+				<ElScrollbar height="800px">
+					<!-- eslint-disable-next-line vue/no-v-html -->
+					<div class="license-text" v-html="licenseText" />
+				</ElScrollbar>
 			</div>
 
 			<template #footer>
@@ -32,6 +30,7 @@
 					</ElButton>
 					<ElButton
 						type="success"
+						:disabled="!licenseLoaded"
 						@click="handleAccept"
 					>
 						I Accept
@@ -55,19 +54,21 @@
 	</div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue'
 import licenseMarkdown from '../../LICENSE.md?raw'
 import { marked } from 'marked'
 
-export default {
+export default defineComponent({
 	name: 'LicenseAcceptance',
 
 	data() {
 		return {
 			licenseText: '',
 			licenseVersion: '',
+			licenseLoaded: false,
 			showDeclineDialog: false,
-			previousAcceptance: null, // { version, acceptedDate } or null
+			previousAcceptance: null as { version: string; acceptedDate: string } | null,
 		}
 	},
 
@@ -87,10 +88,10 @@ export default {
 		 * Extracts version number from LICENSE.md using regex pattern.
 		 * Version must be in format: *Version: X.Y.Z* at bottom of file.
 		 *
-		 * @returns {void}
+		 * @returns {Promise<void>}
 		 * @throws {Error} If version cannot be extracted from LICENSE.md
 		 */
-		loadLicense() {
+		async loadLicense() {
 			try {
 				// Extract version from LICENSE.md
 				// Pattern matches: *Version: 1.0* or *Version: 1.2.3*
@@ -102,16 +103,18 @@ export default {
 
 				// Configure marked options
 				marked.setOptions({
-					breaks: false, // Don't convert \n to <br>
+					breaks: false, // Don't convert \\n to <br>
 					gfm: true, // GitHub Flavored Markdown
 				})
 
 				// Parse markdown to HTML
-				const html = marked.parse(licenseMarkdown)
+				const html = await marked.parse(licenseMarkdown)
 				this.licenseText = html
+				this.licenseLoaded = true
 			} catch (error) {
 				console.error('Failed to load license:', error)
 				this.licenseText = '<p>Error loading license text. Please check LICENSE.md file.</p>'
+				this.licenseLoaded = false
 				throw error
 			}
 		},
@@ -183,7 +186,7 @@ export default {
 		 * @param {string} isoDate - ISO 8601 date string
 		 * @returns {string} Formatted date string (e.g., "January 15, 2025")
 		 */
-		formatDate(isoDate) {
+		formatDate(isoDate: string) {
 			if (!isoDate) return 'Unknown date'
 			try {
 				const date = new Date(isoDate)
@@ -198,7 +201,7 @@ export default {
 			}
 		},
 	},
-}
+})
 </script>
 
 <style scoped>
@@ -219,12 +222,12 @@ export default {
 
 .header {
 	text-align: center;
-	padding: 20px 20px 10px 20px;
+	padding: 20px 20px 10px;
 }
 
 .header h1 {
 	font-size: 2em;
-	margin: 0 0 10px 0;
+	margin: 0 0 10px;
 	color: var(--el-color-primary);
 }
 
@@ -246,7 +249,7 @@ export default {
 	background-color: var(--el-fill-color-darker);
 	padding: 10px;
 	border-radius: 4px;
-	margin: 10px 0 0 0;
+	margin: 10px 0 0;
 	border-left: 3px solid var(--el-color-warning);
 }
 
@@ -255,85 +258,93 @@ export default {
 }
 
 .license-content {
-	padding: 0 20px 20px 20px;
+	padding: 0 20px 20px;
 }
 
 .license-text {
 	font-size: 1.2em;
-	line-height: 1.6;
+	line-height: 1.8;
 	color: var(--el-text-color-primary);
-	padding: 0 10px 10px 10px;
+	padding: 0 20px 10px;
+	overflow-wrap: break-word;
+	white-space: normal;
 }
 
-/* Spacing divs - removed, using default markdown spacing */
+/* Styles for dynamically injected v-html content need :deep() to penetrate scoped styles */
 
-.license-text h1,
-.license-text h2,
-.license-text h3 {
-	margin-top: 30px;
-	margin-bottom: 15px;
+/* Hide the first h1 since card header already shows the title */
+.license-text :deep(h1:first-child) {
+	display: none;
+}
+
+.license-text :deep(h1) {
+	margin-top: 40px;
+	margin-bottom: 20px;
 	color: var(--el-color-primary);
-}
-
-.license-text h1:first-child,
-.license-text h2:first-child,
-.license-text h3:first-child {
-	margin-top: 0;
-}
-
-.license-text h1 {
 	font-size: 1.8em;
 	border-bottom: 2px solid var(--el-color-primary);
 	padding-bottom: 10px;
 }
 
-.license-text h2 {
+.license-text :deep(h2) {
+	margin-top: 40px;
+	margin-bottom: 20px;
+	color: var(--el-text-color-primary);
 	font-size: 1.5em;
 	border-bottom: 1px solid var(--el-border-color);
 	padding-bottom: 8px;
 }
 
-.license-text h3 {
+.license-text :deep(h3) {
+	margin-top: 30px;
+	margin-bottom: 15px;
+	color: var(--el-text-color-primary);
 	font-size: 1.2em;
 }
 
-.license-text p {
-	margin-bottom: 15px;
+.license-text :deep(h1:first-child),
+.license-text :deep(h2:first-child),
+.license-text :deep(h3:first-child) {
+	margin-top: 0;
 }
 
-.license-text p:empty {
+.license-text :deep(p) {
+	margin-bottom: 20px;
+}
+
+.license-text :deep(p:empty) {
 	height: 10px;
 	margin: 0;
 }
 
-.license-text ul,
-.license-text ol {
-	margin: 15px 0;
+.license-text :deep(ul),
+.license-text :deep(ol) {
+	margin: 20px 0;
 	padding-left: 30px;
 }
 
-.license-text li {
-	margin-bottom: 8px;
+.license-text :deep(li) {
+	margin-bottom: 12px;
 }
 
 /* Add spacing after list sections */
-.license-text ul + p,
-.license-text ol + p,
-.license-text ul + h2,
-.license-text ol + h2,
-.license-text ul + h3,
-.license-text ol + h3 {
+.license-text :deep(ul + p),
+.license-text :deep(ol + p),
+.license-text :deep(ul + h2),
+.license-text :deep(ol + h2),
+.license-text :deep(ul + h3),
+.license-text :deep(ol + h3) {
 	margin-top: 25px;
 }
 
-.license-text code {
+.license-text :deep(code) {
 	background-color: var(--el-fill-color-dark);
 	padding: 2px 6px;
 	border-radius: 3px;
 	font-size: 0.9em;
 }
 
-.license-text pre {
+.license-text :deep(pre) {
 	background-color: var(--el-fill-color-dark);
 	padding: 15px;
 	border-radius: 5px;
@@ -341,38 +352,37 @@ export default {
 	margin: 10px 0;
 }
 
-.license-text pre code {
+.license-text :deep(pre code) {
 	background-color: transparent;
 	padding: 0;
 }
 
-.license-text blockquote {
-	border-left: 4px solid var(--el-color-primary);
+.license-text :deep(blockquote) {
+	border-left: 4px solid var(--el-border-color);
 	padding-left: 15px;
 	margin: 15px 0;
 	color: var(--el-text-color-secondary);
 	font-style: italic;
 }
 
-.license-text a {
+.license-text :deep(a) {
 	color: var(--el-color-primary);
 	text-decoration: none;
 }
 
-.license-text a:hover {
+.license-text :deep(a:hover) {
 	text-decoration: underline;
 }
 
-.license-text strong {
+.license-text :deep(strong) {
 	font-weight: bold;
-	color: var(--el-color-primary-light-3);
 }
 
-.license-text em {
+.license-text :deep(em) {
 	font-style: italic;
 }
 
-.license-text hr {
+.license-text :deep(hr) {
 	border: none;
 	border-top: 1px solid var(--el-border-color);
 	margin: 20px 0;

@@ -2,155 +2,360 @@
 
 ## Overview
 
-Headless mode is implemented as a dedicated `HeadlessScheduler` wrapper around the
-base `EventScheduler`. It runs the simulation at maximum speed without using
-timers, pause states, or UI-driven pacing. Once started, a headless run will not
-pause until it reaches the requested tick boundary or drains every pending event.
+Headless mode provides instant-result simulation that runs as fast as possible without timers, animation frames, or pause controls. Implemented as a lightweight `HeadlessScheduler` wrapper around `EventScheduler`, it processes all queued events from start to finish in a single execution.
 
-## Usage
+**Key Characteristics:**
+- **No pause/resume** - Once started, runs until completion
+- **No timers** - Tight execution loop with no delays
+- **CPU intensive** - Recommended for Web Workers (browser) or Worker Threads (Node.js)
+- **Fire-and-forget** - Cannot be stopped or paused once running
+- **Maximum performance** - Processes events as fast as CPU allows
+
+## Purpose
+
+Headless mode is designed for:
+- **Instant match results** - Skip real-time simulation, get final result immediately
+- **Background processing** - Run simulations in Web Workers without blocking UI
+- **Batch simulations** - Process multiple matches for AI training or testing
+- **Continue from real-time** - User clicks "Instant Results" during live match
+
+## Basic Usage
 
 ```javascript
-import { EventScheduler, EventType } from '@/utils/EventScheduler'
-import { HeadlessScheduler } from '@/utils/HeadlessScheduler'
+import { EventScheduler } from './core/EventScheduler'
+import { HeadlessScheduler } from './core/HeadlessScheduler'
 
+// Create scheduler and populate with events
 const scheduler = new EventScheduler()
-const headless = new HeadlessScheduler({ scheduler })
 
-// Schedule events (always tick + 1 or later)
-for (let tick = scheduler.tick + 1; tick < 5_400_000; tick += 100) {
-	scheduler.schedule(tick, EventType.BALL_PHYSICS, (currentTick) => {
-		ball.update(currentTick)
+// Schedule match events (offset-based)
+for (let offset = 0; offset < 5_400_000; offset += 100) {
+	scheduler.schedule(offset, EventType.BALL_PHYSICS, (event) => {
+		ball.update(event.tick)
 	})
 }
 
-// Process everything until the end-of-match boundary (exclusive)
-await headless.runToEnd(5_400_000)
-console.log('Simulation reached full-time tick boundary')
+// Run headless to completion
+const headless = new HeadlessScheduler(scheduler)
+await headless.run()  // Drains entire queue
 
-// Later, if more events were queued (e.g., penalties), drain them instantly
-await headless.drainQueue()
+console.log('Match completed at tick:', scheduler.currentTick)
+```
+
+## API
+
+### Constructor
+
+```typescript
+new HeadlessScheduler(scheduler?: EventScheduler)
+```
+
+**Parameters:**
+- `scheduler` (optional) - Existing `EventScheduler` instance to control
+  - If omitted, creates a fresh `EventScheduler` instance
+  - Pass an existing scheduler to continue from current state (e.g., switch from real-time to instant results)
+
+**Example:**
+```javascript
+// Create fresh scheduler
+const headless1 = new HeadlessScheduler()
+
+// Continue from existing scheduler
+const headless2 = new HeadlessScheduler(existingScheduler)
+```
+
+### Methods
+
+#### `run()`
+
+Drains the entire event queue until no events remain.
+
+```typescript
+async run(): Promise<void>
+```
+
+**Behavior:**
+- Calls `scheduler.runUntilEnd()` internally
+- Processes all events as fast as possible
+- Cannot be paused or stopped once started
+- Throws if already running (prevents re-entrant execution)
+
+**Returns:** Promise that resolves when queue is empty
+
+**Throws:** `Error` if headless scheduler is already running
+
+**Example:**
+```javascript
+const headless = new HeadlessScheduler(scheduler)
+await headless.run()
+// All events processed
+```
+
+### Properties
+
+#### `scheduler` (getter)
+
+Returns the `EventScheduler` instance controlled by this headless runner.
+
+```typescript
+get scheduler(): EventScheduler
+```
+
+**Example:**
+```javascript
+const headless = new HeadlessScheduler()
+console.log('Current tick:', headless.scheduler.currentTick)
+```
+
+#### `running` (getter)
+
+Returns `true` if headless execution is currently in progress.
+
+```typescript
+get running(): boolean
+```
+
+**Example:**
+```javascript
+if (!headless.running) {
+	await headless.run()
+}
+```
+
+## Usage Patterns
+
+### Instant Match Results
+
+Process entire match immediately without real-time simulation:
+
+```javascript
+const scheduler = new EventScheduler()
+const headless = new HeadlessScheduler(scheduler)
+
+// Schedule all match events
+setupMatchEvents(scheduler)
+
+// Run to completion
+await headless.run()
+
+// Extract final results
+const result = {
+	homeGoals: match.homeScore,
+	awayGoals: match.awayScore,
+	finalTick: scheduler.currentTick,
+}
+```
+
+### Continue From Real-Time
+
+User switches from real-time to instant results mid-match:
+
+```javascript
+// Real-time scheduler running
+const realTime = new RealTimeScheduler(scheduler)
+realTime.start()
+
+// User clicks "Instant Results"
+await realTime.stop()
+
+// Continue with headless
+const headless = new HeadlessScheduler(scheduler)
+await headless.run()
+```
+
+### Web Worker Implementation (Recommended)
+
+Run headless simulation in background thread to avoid blocking UI:
+
+```javascript
+// main-thread.js
+const worker = new Worker('simulation-worker.js')
+
+worker.postMessage({
+	type: 'RUN_MATCH',
+	matchData: { teams, formations, seed },
+})
+
+worker.onmessage = (event) => {
+	if (event.data.type === 'MATCH_COMPLETE') {
+		displayResults(event.data.result)
+	}
+}
+
+// simulation-worker.js
+import { EventScheduler } from './core/EventScheduler'
+import { HeadlessScheduler } from './core/HeadlessScheduler'
+
+self.onmessage = async (event) => {
+	if (event.data.type === 'RUN_MATCH') {
+		const scheduler = new EventScheduler()
+		const headless = new HeadlessScheduler(scheduler)
+		
+		// Setup match
+		setupMatchSimulation(scheduler, event.data.matchData)
+		
+		// Run to completion
+		await headless.run()
+		
+		// Send results back
+		self.postMessage({
+			type: 'MATCH_COMPLETE',
+			result: extractMatchResult(scheduler),
+		})
+	}
+}
+```
+
+### Batch Processing
+
+Process multiple scenarios for AI training or testing:
+
+```javascript
+const results = []
+
+for (const scenario of testScenarios) {
+	const scheduler = new EventScheduler()
+	const headless = new HeadlessScheduler(scheduler)
+	
+	setupScenario(scheduler, scenario)
+	await headless.run()
+	
+	results.push({
+		scenario: scenario.name,
+		outcome: extractOutcome(scheduler),
+	})
+}
+
+console.log('Processed', results.length, 'scenarios')
 ```
 
 ## Performance
 
-Based on internal demos:
+Headless mode runs as fast as the CPU allows with no artificial delays:
 
-- **Small simulation** (1,000 events): ~2 ms
-- **Full match** (885,600 events): ~200 ms (≈26,000× faster than real-time)
-- **Stress test** (1,000,000 events): ~400 ms (≈2.5 M events/second)
+**Typical Performance** (approximate, varies by CPU):
+- Small simulation (1,000 events): ~2-5 ms
+- Full match (540,000 events @ 100ms intervals): ~100-200 ms
+- Large simulation (1,000,000 events): ~200-400 ms
 
-Actual numbers vary per CPU, but the loop never waits on timers, so it always
-runs as fast as available compute allows.
+**Performance Characteristics:**
+- No timer overhead (no `setTimeout`/`setInterval`)
+- Single-threaded tight loop
+- CPU-bound (will use 100% of one core)
+- Faster than real-time by 10,000× - 100,000× depending on event density
 
-## Key Features
+## Thread Recommendations
 
-### No Timers
+### Web Workers (Browser)
 
-- Zero `setTimeout`/`setInterval` usage
-- Tight while loops drive `runUntil` directly
-- Optional cooperative yields keep the UI responsive when sharing a thread
+**Recommended** for headless simulation in browsers:
 
-### Maintains Event Order
+```javascript
+// ✅ Run in Web Worker - keeps UI responsive
+const worker = new Worker('simulation-worker.js')
+```
 
-- Same guarantees as the base scheduler:
-  1. Earlier ticks always execute first
-  2. Lower `EventType` values win ties within a tick
-  3. Scheduling order is preserved when tick/type match
+**Benefits:**
+- UI remains responsive during simulation
+- No main thread blocking
+- Can run multiple simulations in parallel (multiple workers)
 
-### Async-Friendly
+### Worker Threads (Node.js)
 
-- Awaited callbacks still resolve per tick before advancing
-- Works with promises returned by event handlers
-- No batching or Promise.all needed on the hot path (keeps allocations minimal)
+**Recommended** for Node.js environments:
 
-### No Pause/Resume State
+```javascript
+// ✅ Run in Worker Thread - keeps event loop responsive
+const { Worker } = require('worker_threads')
+const worker = new Worker('./simulation-worker.js')
+```
 
-- Headless runs are fire-and-forget
-- No pause flag to poll; the wrapper simply runs until its goal is finished
-- Perfect for Instant Results, AI training, or batch sims without UI controls
+**Benefits:**
+- Non-blocking for server applications
+- Parallel simulation processing
+- Better CPU utilization
 
-## Use Cases
+### Main Thread (Not Recommended)
 
-1. **Instant Match Results**
-	```javascript
-	await headless.runToEnd(MATCH_FINAL_TICK)
-	persistMatchResult(bufferedStats)
-	```
+**Avoid** running headless on main thread for large simulations:
 
-2. **Continue From Real-Time Scheduler**
-	```javascript
-	// Player pressed "Instant Result" midway through a live match
-	const headless = new HeadlessScheduler({ scheduler: realTime.scheduler })
-	await headless.runToEnd(MATCH_FINAL_TICK)
-	```
+```javascript
+// ❌ Blocks UI/event loop for entire duration
+await headless.run()  // Can freeze UI for 100-500ms
+```
 
-3. **Batch Processing / AI Experiments**
-	```javascript
-	for (const scenario of trainingScenarios) {
-		setupScenario(scenario)
-		await headless.drainQueue()
-		collectOutputs(scenario)
-	}
-	```
+**Only acceptable for:**
+- Small simulations (<10,000 events)
+- CLI tools / scripts
+- Testing / debugging
 
-4. **Testing / Debugging**
-	```javascript
-	await headless.drainQueue({ yieldEveryTicks: 50_000 })
-	assert.equal(ball.position.x, expectedX)
-	```
+## Comparison with RealTimeScheduler
 
-## API
+| Feature | HeadlessScheduler | RealTimeScheduler |
+|---------|-------------------|-------------------|
+| **Speed** | Maximum (CPU-bound) | Real-time paced (1× - 100×) |
+| **Pause** | ❌ Cannot pause | ❌ No pause/resume |
+| **Stop** | ❌ Cannot stop | ✅ Stop support |
+| **Speed Control** | ❌ No speed control | ✅ Adjustable (0.1× - 100×) |
+| **Use Case** | Instant results | Live simulation |
+| **Thread** | Web Worker recommended | Main thread |
+| **UI Blocking** | ⚠️ Blocks if on main thread | ✅ Non-blocking |
+| **Timers** | ❌ None | ✅ Uses setTimeout |
 
-### `new HeadlessScheduler(options)`
+## Error Handling
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `scheduler` | `EventScheduler` | `new EventScheduler()` | Existing scheduler to drive (pass the real-time instance to resume instantly). |
-| `yieldEveryTicks` | `number` | `0` (disabled) | Cooperative yield interval. When > 0, the runner periodically yields back to the event loop after advancing the specified number of ticks. |
-| `yieldHandler` | `() => void \| Promise<void>` | `() => {}` | Callback invoked whenever a yield is triggered (e.g., `await Promise.resolve()` or `await wait(0)`). |
+### Re-entrant Execution
 
-### `headless.runToEnd(finalTick, options?)`
+Headless scheduler prevents concurrent execution:
 
-Fast-forwards the scheduler until `finalTick` (exclusive). Throws if `finalTick`
-is before the current tick or if another headless run is already active.
+```javascript
+const headless = new HeadlessScheduler(scheduler)
 
-Per-run `options` support the same `yieldEveryTicks` and `yieldHandler` keys as
-the constructor, allowing one-off overrides (e.g., temporarily yield every
-50,000 ticks when running on the main thread).
+await headless.run()  // First run - OK
 
-### `headless.drainQueue(options?)`
+// Second run while first is still running
+await headless.run()  // ❌ Throws: "HeadlessScheduler is already running"
+```
 
-Processes every pending event regardless of final tick. Useful for AI sims that
-simply want to empty the queue (e.g., auto-resolve background matches). Returns
-immediately when there is nothing scheduled.
+### Guard Against Re-entrant Calls
 
-## Implementation Details
+```javascript
+const headless = new HeadlessScheduler(scheduler)
 
-```ts
-while (this.#scheduler.tick < targetTick) {
-	const before = this.#scheduler.tick
-	const chunkTarget = this.#computeChunkTarget(targetTick, yieldEvery)
-	await this.#scheduler.runUntil(chunkTarget)
-	await this.#maybeYield(yieldEvery, yieldHandler, this.#scheduler.tick - before)
+if (!headless.running) {
+	await headless.run()
+} else {
+	console.warn('Headless simulation already in progress')
 }
 ```
 
-- Chunk size equals the remaining ticks until the yield boundary (or until the
-  target tick) so the loop does not allocate intermediate arrays.
-- `yieldEveryTicks` can be `0` to disable yielding entirely—ideal for worker
-  threads or CLI tools.
-- The wrapper relies on the base scheduler's public getters (`tick`,
-  `hasPendingEvents`, `nextScheduledTick`) instead of poking into private heap
-  state.
+## Implementation Details
 
-## Tests
+The `HeadlessScheduler` is a minimal wrapper:
 
-Unit tests cover:
+```typescript
+async run(): Promise<void> {
+	if (this.#running) {
+		throw new Error('HeadlessScheduler is already running')
+	}
+	
+	this.#running = true
+	try {
+		await this.#scheduler.runUntilEnd()  // Drain entire queue
+	} finally {
+		this.#running = false
+	}
+}
+```
 
-- Chunked `runToEnd` progress with and without yields
-- Queue draining after mid-match Instant Result handoff
-- Protection against re-entrant runs
-- Yield overrides (custom interval + handler)
+**Key Points:**
+- Calls `EventScheduler.runUntilEnd()` which drains queue completely
+- Sets `running` flag to prevent re-entrant execution
+- No chunking, no yielding, no pause checks
+- Pure pass-through to scheduler's drain logic
 
-Additional integration scenarios (full match sims, stress cases) run inside the
-match-engine test harness.
+## See Also
+
+- [EventScheduler](./EVENT_SCHEDULER.md) - Core scheduler implementation
+- [EVENT_SCHEDULER_REQUIREMENTS.md](./EVENT_SCHEDULER_REQUIREMENTS.md) - Complete specification
+- [RealTimeScheduler](./EVENT_SCHEDULER.md#realtimescheduler-wrapper) - Real-time execution wrapper

@@ -4,6 +4,7 @@
 		"module": "ESNext",
 		"lib": ["ES2022", "DOM"],
 		"moduleResolution": "bundler",
+		"baseUrl": ".",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
@@ -12,19 +13,23 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"allowImportingTsExtensions": true,
+		"allowArbitraryExtensions": true,
 		"types": ["vite/client", "node"],
 		"paths": {
 			"@/*": ["./src/*"]
 		}
 	},
 	"include": [
+		"src/env.d.ts",
 		"src/**/*.ts",
 		"src/**/*.d.ts",
-		"src/**/*.vue"
+		"src/**/*.vue",
+		"shims-vue.d.ts"
 	],
 	"exclude": [
 		"node_modules",
 		"dist",
-		".vite"
+		".vite",
+		"src/backups/**"
 	]
 }

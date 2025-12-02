@@ -23,7 +23,7 @@ This document provides a high-level overview of the **FC Tycoon Match Simulation
 │  │  - Ball Physics: 5-20ms (~50-200 Hz, speed-based)         │  │
 │  │  - Player Physics: 10-50ms (~20-100 Hz, speed-based)      │  │
 │  │  - Player AI: 30-200ms (~5-33 Hz, attribute/context)      │  │
-│  │  - Vision: 15-60ms (~16.67-67 Hz)                          │  │
+│  │  - Vision: 15-60ms (~16.67-67 Hz)                         │  │
 │  │  - Head AI: 120-250ms (~4-8.33 Hz, awareness-based)       │  │
 │  │  - Head Physics: 20-50ms (~20-50 Hz, rotation-based)      │  │
 │  │  - Seeded PRNG: Deterministic random number generation    │  │
@@ -41,7 +41,7 @@ This document provides a high-level overview of the **FC Tycoon Match Simulation
 │                        ▼                                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │      Match State (Deterministic, No Recording Needed)     │  │
-│  │  - Ball position, velocity, spin (physics simulation)     │  │
+│  │  - Ball position3d/2d, velocity, spin (physics simulation)│  │
 │  │  - Player positions, velocities, orientations             │  │
 │  │  - AI decisions based on seeded PRNG                      │  │
 │  │  - Match events (goals, fouls, substitutions, etc.)       │  │
@@ -80,16 +80,17 @@ The match simulation uses TWO coordinate systems:
 
 **World Space** (Absolute):
 - Used for physics, rendering, collision detection
-- Origin (0, 0, 0) = center of field
-- Team 1 attacks +Z direction, Team 2 attacks -Z direction
+- Origin (0, 0) = center of field
+- Home team attacks +X direction, Away team attacks -X direction
+- X-axis = goal-to-goal, Y-axis = touchline-to-touchline
 - Measurements in meters
 
-**Team-Relative Space** (Tactical):
+**Formation Slots** (Tactical):
 - Used for AI, formations, tactics
 - Origin (0, 0) = team center of mass (dynamic)
-- Both teams see -Z as opponent goal (attacking direction)
-- Normalized -1 to 1 for formations
-- Eliminates team-specific code (identical AI logic for both teams)
+- Normalized -1 to 1 coordinates, scaled by tactical width/depth
+- Each team has `attackDir` vector: Home = `{x:1, y:0}`, Away = `{x:-1, y:0}`
+- AI uses `attackDir` to resolve "forward" direction (eliminates team-specific code)
 
 **See**: [`COORDINATES.md`](./COORDINATES.md) for full details
 
@@ -199,13 +200,14 @@ Players have:
 
 ### 7. Formation System
 
-Formations use normalized team-relative space:
+Formations use normalized slot positions in world space:
 
-- **-1 to 1 Coordinates**: X (left/right), Z (defenders/strikers)
+- **-1 to 1 Coordinates**: X (left/right), Y (touchline-to-touchline)
+- **attackDir Vector**: Determines team's forward direction (Home = +X, Away = -X)
 - **Position Discipline**: 0.0 (free role, no nudge) to 1.0 (rigid, always returns to position)
 - **Formation Nudges**: Discipline controls blend between tactical freedom and formation position
 - **Formation Transitions**: In-possession (attacking) vs. Out-of-possession (defending)
-- **Identical Logic**: Both teams use same formation definitions (Team 2 flips X/Z)
+- **Identical Logic**: Both teams use same formation definitions (attackDir resolves directions)
 
 **See**: [`FORMATIONS.md`](./FORMATIONS.md) for formation architecture
 
@@ -218,8 +220,8 @@ Match replay achieved by re-running simulation from same seed:
 **What Gets Stored**:
 - Match seed (PRNG seed for deterministic replay)
 - Team data (formations, tactics, player attributes)
-- Match events (goals, substitutions, tactical changes with timestamps)
-- User inputs (tactical changes, substitutions during match)
+- Match events (goals, cards, injuries for display)
+- External events (human input only: substitutions, tactical changes, shouts)
 
 **What Does NOT Get Stored**:
 - Ball positions/velocities (recalculated during replay)
@@ -362,7 +364,7 @@ docs/
 ├── README.md              # Documentation index (getting started)
 │
 ├── Core Systems/
-│   ├── COORDINATES.md     # Dual coordinate system (world + team-relative)
+│   ├── COORDINATES.md     # Coordinate system (world space + attackDir)
 │   ├── EVENT_SCHEDULER.md # Dynamic event scheduling (min-heap priority queue)
 │   └── WORKERS.md         # 22 per-player AI, deterministic with seeded PRNG
 │
@@ -370,12 +372,11 @@ docs/
 │   ├── BALL.md            # Ball physics, Magnus effect, spin
 │   ├── FIELD.md           # Field dimensions, markings, boundaries
 │   ├── PLAYERS.md         # Player attributes, AI interface, vision
-│   ├── FORMATIONS.md      # Formation system, team-relative space
+│   ├── FORMATIONS.md      # Formation system, slots + attackDir
 │   └── MATCH.md           # Match flow, team phases, scoring
 │
 ├── Advanced Features/
 │   ├── REPLAY.md          # Deterministic replay system (seed-based)
-│   ├── 2D_VS_3D.md        # Rendering modes
 │   └── AI.md              # AI implementation guide (if exists)
 │
 └── Reference/
@@ -400,7 +401,6 @@ docs/
 - ✅ WORKERS.md - Per-player AI architecture (intention-based)
 - ✅ VIEWER.md - Viewer/simulation separation with variable interval handling
 - ✅ MATCH.md - Match flow with team phases
-- ✅ 2D_VS_3D.md - Rendering modes with variable interval interpolation
 - ✅ ARCHITECTURE.md - This document
 
 **Next Steps** (after documentation approval):
@@ -408,7 +408,7 @@ docs/
 2. Implement ball physics (gravity, drag, Magnus effect, dynamic 5-20ms updates)
 3. Implement player movement (collision detection, animations, dynamic 10-50ms updates)
 4. Implement 22 per-player AI (persistent state, intention-based, dynamic 30-200ms)
-5. Implement formation system (team-relative space, position discipline, transitions)
+5. Implement formation system (slots + attackDir, position discipline, transitions)
 6. Implement viewer (3D rendering, variable interval interpolation, camera perspectives)
 7. Implement replay system (delta encoding, base + highlight snapshots, 1st-person perspective)
 8. Testing and refinement
@@ -431,14 +431,16 @@ docs/
 
 **Trade-off**: Visual replay only (NOT deterministic simulation replay)
 
-### Why Team-Relative Space?
+### Why Team Attack Direction?
 
-**Problem**: Team-specific coordinate systems require duplicate AI code:
-- Team 1 attacks +Z, Team 2 attacks -Z
+**Problem**: Team-specific directions require duplicate AI code:
+- Home team attacks +X, Away team attacks -X
 - "Move toward opponent goal" means different directions for each team
 
-**Solution**: Team-relative space where -Z ALWAYS means opponent goal:
-- Single AI implementation works for both teams
+**Solution**: Team `attackDir` vector determines forward direction:
+- Home: `{x: 1, y: 0}` (toward +X), Away: `{x: -1, y: 0}` (toward -X)
+- Single AI implementation uses `attackDir` to resolve directions
+- See `COORDINATES.md` Formation Slots for details
 - Formation system identical for both teams
 - Tactical code has NO team-specific branches
 
@@ -516,13 +518,13 @@ docs/
 
 **FC Tycoon Match Simulation** is a 100% deterministic, frame-rate independent football match engine with:
 
-- **Dual Coordinate Systems**: World space (physics) + Team-relative space (tactics)
+- **Coordinate System**: World space (physics/rendering) + attackDir (team-relative directions)
 - **Dynamic Event Scheduling**: Ball 5-20ms, Players 10-50ms, AI 30-200ms (adaptive intervals)
 - **Per-Player AI**: Persistent state, intention-based returns, deterministic with seeded PRNG
 - **Renderer Separation**: Simulation (deterministic) → Renderer reads state (no feedback loop)
 - **Realistic Physics**: Gravity, drag, Magnus effect (mandatory spin), deterministic outcomes
 - **AI System**: Limited vision (15-60ms), weight-based tendencies (0.0-1.0), position discipline (0.0-1.0)
-- **Formation System**: Normalized team-relative space (-1 to 1), position discipline controls formation nudge strength
+- **Formation System**: Normalized slots in world axes (-1 to 1), attackDir determines forward, position discipline controls formation nudge strength
 - **Replay System**: Seed-based deterministic replay (< 20 KB per match, 100% reproducible)
 - **Team Phases**: Attacking, Defending, Contesting with formation transitions
 

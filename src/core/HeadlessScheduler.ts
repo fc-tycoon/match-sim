@@ -29,11 +29,17 @@ export class HeadlessScheduler {
 	/**
 	 * Create a new headless runner.
 	 *
-	 * @param {EventScheduler | undefined} scheduler Optional scheduler to control.
+	 * @param {EventScheduler} [scheduler] Optional scheduler to control.
 	 * When omitted, a fresh {@link EventScheduler} instance is created.
 	 */
-	constructor(scheduler: EventScheduler | undefined) {
+	constructor(scheduler?: EventScheduler) {
 		this.#scheduler = scheduler ?? new EventScheduler()
+
+		// ═══════════════════════════════════════════════════════════
+		//                  S E A L   I N S T A N C E
+		// ═══════════════════════════════════════════════════════════
+
+		Object.seal(this)
 	}
 
 	/**

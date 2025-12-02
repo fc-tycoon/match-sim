@@ -1,0 +1,27 @@
+:root {
+	--fonts: verdana, tahoma, roboto, 'segoe ui', geneva, helvetica, oxygen, ubuntu, cantarell, arial, sans-serif;
+}
+
+html,
+body,
+#app {
+	font-family: var(--fonts) !important;
+}
+
+/* Override Element Plus font family */
+.el-message-box,
+.el-button,
+.el-input,
+.el-select,
+.el-dialog {
+	font-family: var(--fonts) !important;
+}
+
+/* Global spacing for icons inside buttons */
+
+/* Ensure icon spacing works with Element Plus button structure */
+.el-button > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}

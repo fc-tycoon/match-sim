@@ -235,7 +235,36 @@ If all goalkeepers injured/sent off:
 
 ## Substitution Data
 
-### Historical Tracking
+### External Event Recording (For Replay)
+
+**Human-controlled** substitutions are **external events** that must be recorded for deterministic replay.
+AI-controlled substitutions are deterministic (driven by seeded PRNG) and do not need recording.
+
+**See**: [`REPLAY.md`](./REPLAY.md) and [`EVENT_SCHEDULER.md`](./EVENT_SCHEDULER.md) for external event architecture.
+
+**Scheduling Substitutions**:
+```typescript
+import { ExternalEventType } from '@/core/ExternalEventTypes'
+
+// Schedule a substitution through Match (the ONLY way to schedule external events)
+const idx = match.scheduleExternal(
+    0,  // tickOffset (0 = next available tick)
+    {
+        type: ExternalEventType.SUBSTITUTION,
+        playerOutId: 7,
+        playerInId: 15,
+        positionSlotId: 3,  // optional
+    },
+    (event) => {
+        // Callback executed when substitution fires
+        const data = event.data as SubstitutionData
+        performSubstitution(data.playerOutId, data.playerInId)
+    }
+)
+// idx is the index in match.externalEvents[] for reference
+```
+
+### Historical Tracking (For UI/Analytics)
 
 **Substitution Event Record Structure**:
 - `matchTime`: 67.5 (minutes)
@@ -243,7 +272,7 @@ If all goalkeepers injured/sent off:
 - `playerOff`:
   - `id`: Player ID
   - `name`: Player name
-  - `position`: {x, z} (world space position when substituted)
+  - `position`: {x, y} (world space position when substituted)
   - `stamina`: 0.32 (stamina percentage, 0.0-1.0)
   - `reason`: "stamina" | "injury" | "tactical"
 - `playerOn`:

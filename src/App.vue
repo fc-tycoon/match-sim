@@ -2,7 +2,8 @@
 	FC Tycoon™ 2027 Match Simulator - Root Application Component
 
 	Copyright © 2025 Darkwave Studios LLC. All rights reserved.
-	Licensed under FC Tycoon Match Simulator Source Available License.
+	This file is part of FC Tycoon™ 2027 Match Simulator.
+	Licensed under the FC Tycoon Match Simulator Source Available License.
 	See LICENSE.md in the project root for license terms.
 -->
 
@@ -38,7 +39,7 @@ body {
 #app {
 	width: 100%;
 	height: 100%;
-	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	font-family: Verdana, Roboto, 'Segoe UI', Tahoma, Geneva, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }

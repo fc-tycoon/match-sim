@@ -1,0 +1,2432 @@
+[
+    {
+        "id": 1,
+        "slot_id": 1,
+        "role_id": 1
+    },
+    {
+        "id": 2,
+        "slot_id": 1,
+        "role_id": 11
+    },
+    {
+        "id": 3,
+        "slot_id": 1,
+        "role_id": 21
+    },
+    {
+        "id": 4,
+        "slot_id": 2,
+        "role_id": 2
+    },
+    {
+        "id": 5,
+        "slot_id": 2,
+        "role_id": 3
+    },
+    {
+        "id": 6,
+        "slot_id": 2,
+        "role_id": 12
+    },
+    {
+        "id": 7,
+        "slot_id": 2,
+        "role_id": 13
+    },
+    {
+        "id": 8,
+        "slot_id": 2,
+        "role_id": 22
+    },
+    {
+        "id": 9,
+        "slot_id": 2,
+        "role_id": 42
+    },
+    {
+        "id": 10,
+        "slot_id": 2,
+        "role_id": 32
+    },
+    {
+        "id": 11,
+        "slot_id": 2,
+        "role_id": 43
+    },
+    {
+        "id": 12,
+        "slot_id": 2,
+        "role_id": 33
+    },
+    {
+        "id": 13,
+        "slot_id": 12,
+        "role_id": 3
+    },
+    {
+        "id": 14,
+        "slot_id": 12,
+        "role_id": 13
+    },
+    {
+        "id": 15,
+        "slot_id": 12,
+        "role_id": 23
+    },
+    {
+        "id": 16,
+        "slot_id": 12,
+        "role_id": 33
+    },
+    {
+        "id": 17,
+        "slot_id": 12,
+        "role_id": 43
+    },
+    {
+        "id": 18,
+        "slot_id": 3,
+        "role_id": 2
+    },
+    {
+        "id": 19,
+        "slot_id": 3,
+        "role_id": 3
+    },
+    {
+        "id": 20,
+        "slot_id": 3,
+        "role_id": 12
+    },
+    {
+        "id": 21,
+        "slot_id": 3,
+        "role_id": 13
+    },
+    {
+        "id": 22,
+        "slot_id": 3,
+        "role_id": 22
+    },
+    {
+        "id": 23,
+        "slot_id": 3,
+        "role_id": 32
+    },
+    {
+        "id": 24,
+        "slot_id": 3,
+        "role_id": 33
+    },
+    {
+        "id": 25,
+        "slot_id": 3,
+        "role_id": 42
+    },
+    {
+        "id": 26,
+        "slot_id": 3,
+        "role_id": 43
+    },
+    {
+        "id": 27,
+        "slot_id": 13,
+        "role_id": 3
+    },
+    {
+        "id": 28,
+        "slot_id": 13,
+        "role_id": 13
+    },
+    {
+        "id": 29,
+        "slot_id": 13,
+        "role_id": 23
+    },
+    {
+        "id": 30,
+        "slot_id": 13,
+        "role_id": 33
+    },
+    {
+        "id": 31,
+        "slot_id": 13,
+        "role_id": 43
+    },
+    {
+        "id": 44,
+        "slot_id": 4,
+        "role_id": 4
+    },
+    {
+        "id": 45,
+        "slot_id": 4,
+        "role_id": 5
+    },
+    {
+        "id": 47,
+        "slot_id": 4,
+        "role_id": 15
+    },
+    {
+        "id": 48,
+        "slot_id": 4,
+        "role_id": 24
+    },
+    {
+        "id": 49,
+        "slot_id": 4,
+        "role_id": 25
+    },
+    {
+        "id": 50,
+        "slot_id": 4,
+        "role_id": 34
+    },
+    {
+        "id": 51,
+        "slot_id": 4,
+        "role_id": 35
+    },
+    {
+        "id": 52,
+        "slot_id": 4,
+        "role_id": 44
+    },
+    {
+        "id": 53,
+        "slot_id": 4,
+        "role_id": 45
+    },
+    {
+        "id": 54,
+        "slot_id": 5,
+        "role_id": 4
+    },
+    {
+        "id": 55,
+        "slot_id": 5,
+        "role_id": 5
+    },
+    {
+        "id": 57,
+        "slot_id": 5,
+        "role_id": 15
+    },
+    {
+        "id": 58,
+        "slot_id": 5,
+        "role_id": 24
+    },
+    {
+        "id": 59,
+        "slot_id": 5,
+        "role_id": 25
+    },
+    {
+        "id": 60,
+        "slot_id": 5,
+        "role_id": 44
+    },
+    {
+        "id": 61,
+        "slot_id": 5,
+        "role_id": 34
+    },
+    {
+        "id": 62,
+        "slot_id": 5,
+        "role_id": 35
+    },
+    {
+        "id": 63,
+        "slot_id": 5,
+        "role_id": 45
+    },
+    {
+        "id": 64,
+        "slot_id": 14,
+        "role_id": 4
+    },
+    {
+        "id": 65,
+        "slot_id": 14,
+        "role_id": 5
+    },
+    {
+        "id": 67,
+        "slot_id": 14,
+        "role_id": 15
+    },
+    {
+        "id": 68,
+        "slot_id": 14,
+        "role_id": 24
+    },
+    {
+        "id": 69,
+        "slot_id": 14,
+        "role_id": 25
+    },
+    {
+        "id": 70,
+        "slot_id": 14,
+        "role_id": 34
+    },
+    {
+        "id": 71,
+        "slot_id": 14,
+        "role_id": 35
+    },
+    {
+        "id": 72,
+        "slot_id": 14,
+        "role_id": 44
+    },
+    {
+        "id": 73,
+        "slot_id": 14,
+        "role_id": 45
+    },
+    {
+        "id": 74,
+        "slot_id": 15,
+        "role_id": 4
+    },
+    {
+        "id": 75,
+        "slot_id": 15,
+        "role_id": 5
+    },
+    {
+        "id": 77,
+        "slot_id": 15,
+        "role_id": 15
+    },
+    {
+        "id": 78,
+        "slot_id": 15,
+        "role_id": 24
+    },
+    {
+        "id": 79,
+        "slot_id": 15,
+        "role_id": 25
+    },
+    {
+        "id": 80,
+        "slot_id": 15,
+        "role_id": 34
+    },
+    {
+        "id": 81,
+        "slot_id": 15,
+        "role_id": 35
+    },
+    {
+        "id": 82,
+        "slot_id": 15,
+        "role_id": 44
+    },
+    {
+        "id": 83,
+        "slot_id": 15,
+        "role_id": 45
+    },
+    {
+        "id": 84,
+        "slot_id": 24,
+        "role_id": 4
+    },
+    {
+        "id": 85,
+        "slot_id": 24,
+        "role_id": 5
+    },
+    {
+        "id": 87,
+        "slot_id": 24,
+        "role_id": 15
+    },
+    {
+        "id": 88,
+        "slot_id": 24,
+        "role_id": 34
+    },
+    {
+        "id": 89,
+        "slot_id": 24,
+        "role_id": 35
+    },
+    {
+        "id": 90,
+        "slot_id": 24,
+        "role_id": 44
+    },
+    {
+        "id": 91,
+        "slot_id": 24,
+        "role_id": 45
+    },
+    {
+        "id": 92,
+        "slot_id": 16,
+        "role_id": 6
+    },
+    {
+        "id": 93,
+        "slot_id": 6,
+        "role_id": 6
+    },
+    {
+        "id": 94,
+        "slot_id": 26,
+        "role_id": 6
+    },
+    {
+        "id": 95,
+        "slot_id": 36,
+        "role_id": 6
+    },
+    {
+        "id": 96,
+        "slot_id": 46,
+        "role_id": 6
+    },
+    {
+        "id": 97,
+        "slot_id": 56,
+        "role_id": 6
+    },
+    {
+        "id": 102,
+        "slot_id": 8,
+        "role_id": 8
+    },
+    {
+        "id": 103,
+        "slot_id": 38,
+        "role_id": 8
+    },
+    {
+        "id": 104,
+        "slot_id": 48,
+        "role_id": 8
+    },
+    {
+        "id": 105,
+        "slot_id": 18,
+        "role_id": 8
+    },
+    {
+        "id": 106,
+        "slot_id": 58,
+        "role_id": 8
+    },
+    {
+        "id": 107,
+        "slot_id": 68,
+        "role_id": 8
+    },
+    {
+        "id": 108,
+        "slot_id": 88,
+        "role_id": 8
+    },
+    {
+        "id": 109,
+        "slot_id": 78,
+        "role_id": 8
+    },
+    {
+        "id": 110,
+        "slot_id": 28,
+        "role_id": 8
+    },
+    {
+        "id": 111,
+        "slot_id": 9,
+        "role_id": 9
+    },
+    {
+        "id": 112,
+        "slot_id": 29,
+        "role_id": 9
+    },
+    {
+        "id": 113,
+        "slot_id": 39,
+        "role_id": 9
+    },
+    {
+        "id": 114,
+        "slot_id": 10,
+        "role_id": 10
+    },
+    {
+        "id": 115,
+        "slot_id": 30,
+        "role_id": 10
+    },
+    {
+        "id": 116,
+        "slot_id": 40,
+        "role_id": 10
+    },
+    {
+        "id": 117,
+        "slot_id": 24,
+        "role_id": 14
+    },
+    {
+        "id": 118,
+        "slot_id": 4,
+        "role_id": 14
+    },
+    {
+        "id": 119,
+        "slot_id": 5,
+        "role_id": 14
+    },
+    {
+        "id": 120,
+        "slot_id": 16,
+        "role_id": 96
+    },
+    {
+        "id": 121,
+        "slot_id": 46,
+        "role_id": 96
+    },
+    {
+        "id": 122,
+        "slot_id": 56,
+        "role_id": 96
+    },
+    {
+        "id": 123,
+        "slot_id": 56,
+        "role_id": 26
+    },
+    {
+        "id": 124,
+        "slot_id": 46,
+        "role_id": 26
+    },
+    {
+        "id": 125,
+        "slot_id": 16,
+        "role_id": 26
+    },
+    {
+        "id": 126,
+        "slot_id": 6,
+        "role_id": 26
+    },
+    {
+        "id": 127,
+        "slot_id": 26,
+        "role_id": 26
+    },
+    {
+        "id": 128,
+        "slot_id": 36,
+        "role_id": 26
+    },
+    {
+        "id": 129,
+        "slot_id": 16,
+        "role_id": 116
+    },
+    {
+        "id": 130,
+        "slot_id": 46,
+        "role_id": 116
+    },
+    {
+        "id": 131,
+        "slot_id": 56,
+        "role_id": 116
+    },
+    {
+        "id": 132,
+        "slot_id": 6,
+        "role_id": 116
+    },
+    {
+        "id": 133,
+        "slot_id": 26,
+        "role_id": 116
+    },
+    {
+        "id": 134,
+        "slot_id": 36,
+        "role_id": 116
+    },
+    {
+        "id": 135,
+        "slot_id": 16,
+        "role_id": 106
+    },
+    {
+        "id": 136,
+        "slot_id": 46,
+        "role_id": 106
+    },
+    {
+        "id": 137,
+        "slot_id": 56,
+        "role_id": 106
+    },
+    {
+        "id": 138,
+        "slot_id": 6,
+        "role_id": 106
+    },
+    {
+        "id": 139,
+        "slot_id": 26,
+        "role_id": 106
+    },
+    {
+        "id": 140,
+        "slot_id": 36,
+        "role_id": 106
+    },
+    {
+        "id": 141,
+        "slot_id": 6,
+        "role_id": 46
+    },
+    {
+        "id": 142,
+        "slot_id": 26,
+        "role_id": 46
+    },
+    {
+        "id": 143,
+        "slot_id": 36,
+        "role_id": 46
+    },
+    {
+        "id": 144,
+        "slot_id": 56,
+        "role_id": 46
+    },
+    {
+        "id": 145,
+        "slot_id": 46,
+        "role_id": 46
+    },
+    {
+        "id": 146,
+        "slot_id": 16,
+        "role_id": 46
+    },
+    {
+        "id": 147,
+        "slot_id": 18,
+        "role_id": 56
+    },
+    {
+        "id": 148,
+        "slot_id": 58,
+        "role_id": 56
+    },
+    {
+        "id": 149,
+        "slot_id": 68,
+        "role_id": 56
+    },
+    {
+        "id": 150,
+        "slot_id": 6,
+        "role_id": 56
+    },
+    {
+        "id": 151,
+        "slot_id": 26,
+        "role_id": 56
+    },
+    {
+        "id": 152,
+        "slot_id": 36,
+        "role_id": 56
+    },
+    {
+        "id": 153,
+        "slot_id": 56,
+        "role_id": 56
+    },
+    {
+        "id": 154,
+        "slot_id": 46,
+        "role_id": 56
+    },
+    {
+        "id": 155,
+        "slot_id": 16,
+        "role_id": 56
+    },
+    {
+        "id": 156,
+        "slot_id": 16,
+        "role_id": 16
+    },
+    {
+        "id": 157,
+        "slot_id": 46,
+        "role_id": 16
+    },
+    {
+        "id": 158,
+        "slot_id": 56,
+        "role_id": 16
+    },
+    {
+        "id": 159,
+        "slot_id": 6,
+        "role_id": 16
+    },
+    {
+        "id": 160,
+        "slot_id": 26,
+        "role_id": 16
+    },
+    {
+        "id": 161,
+        "slot_id": 36,
+        "role_id": 16
+    },
+    {
+        "id": 162,
+        "slot_id": 6,
+        "role_id": 76
+    },
+    {
+        "id": 163,
+        "slot_id": 26,
+        "role_id": 76
+    },
+    {
+        "id": 164,
+        "slot_id": 36,
+        "role_id": 76
+    },
+    {
+        "id": 165,
+        "slot_id": 18,
+        "role_id": 76
+    },
+    {
+        "id": 166,
+        "slot_id": 58,
+        "role_id": 76
+    },
+    {
+        "id": 167,
+        "slot_id": 68,
+        "role_id": 76
+    },
+    {
+        "id": 168,
+        "slot_id": 6,
+        "role_id": 66
+    },
+    {
+        "id": 169,
+        "slot_id": 26,
+        "role_id": 66
+    },
+    {
+        "id": 170,
+        "slot_id": 36,
+        "role_id": 66
+    },
+    {
+        "id": 171,
+        "slot_id": 36,
+        "role_id": 36
+    },
+    {
+        "id": 172,
+        "slot_id": 26,
+        "role_id": 36
+    },
+    {
+        "id": 173,
+        "slot_id": 6,
+        "role_id": 36
+    },
+    {
+        "id": 174,
+        "slot_id": 36,
+        "role_id": 86
+    },
+    {
+        "id": 175,
+        "slot_id": 26,
+        "role_id": 86
+    },
+    {
+        "id": 176,
+        "slot_id": 60,
+        "role_id": 120
+    },
+    {
+        "id": 177,
+        "slot_id": 50,
+        "role_id": 120
+    },
+    {
+        "id": 178,
+        "slot_id": 20,
+        "role_id": 120
+    },
+    {
+        "id": 179,
+        "slot_id": 10,
+        "role_id": 120
+    },
+    {
+        "id": 180,
+        "slot_id": 30,
+        "role_id": 120
+    },
+    {
+        "id": 181,
+        "slot_id": 40,
+        "role_id": 120
+    },
+    {
+        "id": 182,
+        "slot_id": 8,
+        "role_id": 18
+    },
+    {
+        "id": 183,
+        "slot_id": 38,
+        "role_id": 18
+    },
+    {
+        "id": 184,
+        "slot_id": 48,
+        "role_id": 18
+    },
+    {
+        "id": 185,
+        "slot_id": 18,
+        "role_id": 18
+    },
+    {
+        "id": 186,
+        "slot_id": 58,
+        "role_id": 18
+    },
+    {
+        "id": 187,
+        "slot_id": 68,
+        "role_id": 18
+    },
+    {
+        "id": 188,
+        "slot_id": 88,
+        "role_id": 18
+    },
+    {
+        "id": 189,
+        "slot_id": 78,
+        "role_id": 18
+    },
+    {
+        "id": 190,
+        "slot_id": 28,
+        "role_id": 18
+    },
+    {
+        "id": 191,
+        "slot_id": 18,
+        "role_id": 68
+    },
+    {
+        "id": 192,
+        "slot_id": 58,
+        "role_id": 68
+    },
+    {
+        "id": 193,
+        "slot_id": 68,
+        "role_id": 68
+    },
+    {
+        "id": 194,
+        "slot_id": 88,
+        "role_id": 68
+    },
+    {
+        "id": 195,
+        "slot_id": 78,
+        "role_id": 68
+    },
+    {
+        "id": 196,
+        "slot_id": 28,
+        "role_id": 68
+    },
+    {
+        "id": 197,
+        "slot_id": 8,
+        "role_id": 68
+    },
+    {
+        "id": 198,
+        "slot_id": 38,
+        "role_id": 68
+    },
+    {
+        "id": 199,
+        "slot_id": 48,
+        "role_id": 68
+    },
+    {
+        "id": 200,
+        "slot_id": 19,
+        "role_id": 139
+    },
+    {
+        "id": 201,
+        "slot_id": 49,
+        "role_id": 139
+    },
+    {
+        "id": 202,
+        "slot_id": 59,
+        "role_id": 139
+    },
+    {
+        "id": 203,
+        "slot_id": 20,
+        "role_id": 139
+    },
+    {
+        "id": 204,
+        "slot_id": 50,
+        "role_id": 139
+    },
+    {
+        "id": 205,
+        "slot_id": 60,
+        "role_id": 139
+    },
+    {
+        "id": 206,
+        "slot_id": 8,
+        "role_id": 88
+    },
+    {
+        "id": 207,
+        "slot_id": 38,
+        "role_id": 88
+    },
+    {
+        "id": 208,
+        "slot_id": 48,
+        "role_id": 88
+    },
+    {
+        "id": 209,
+        "slot_id": 18,
+        "role_id": 88
+    },
+    {
+        "id": 210,
+        "slot_id": 58,
+        "role_id": 88
+    },
+    {
+        "id": 211,
+        "slot_id": 68,
+        "role_id": 88
+    },
+    {
+        "id": 212,
+        "slot_id": 88,
+        "role_id": 88
+    },
+    {
+        "id": 213,
+        "slot_id": 78,
+        "role_id": 88
+    },
+    {
+        "id": 214,
+        "slot_id": 28,
+        "role_id": 88
+    },
+    {
+        "id": 215,
+        "slot_id": 18,
+        "role_id": 126
+    },
+    {
+        "id": 216,
+        "slot_id": 58,
+        "role_id": 126
+    },
+    {
+        "id": 217,
+        "slot_id": 68,
+        "role_id": 126
+    },
+    {
+        "id": 218,
+        "slot_id": 36,
+        "role_id": 126
+    },
+    {
+        "id": 219,
+        "slot_id": 26,
+        "role_id": 126
+    },
+    {
+        "id": 220,
+        "slot_id": 6,
+        "role_id": 126
+    },
+    {
+        "id": 221,
+        "slot_id": 21,
+        "role_id": 127
+    },
+    {
+        "id": 222,
+        "slot_id": 31,
+        "role_id": 127
+    },
+    {
+        "id": 223,
+        "slot_id": 41,
+        "role_id": 127
+    },
+    {
+        "id": 224,
+        "slot_id": 17,
+        "role_id": 127
+    },
+    {
+        "id": 225,
+        "slot_id": 27,
+        "role_id": 127
+    },
+    {
+        "id": 226,
+        "slot_id": 37,
+        "role_id": 127
+    },
+    {
+        "id": 227,
+        "slot_id": 51,
+        "role_id": 87
+    },
+    {
+        "id": 228,
+        "slot_id": 47,
+        "role_id": 87
+    },
+    {
+        "id": 229,
+        "slot_id": 11,
+        "role_id": 87
+    },
+    {
+        "id": 230,
+        "slot_id": 7,
+        "role_id": 87
+    },
+    {
+        "id": 231,
+        "slot_id": 21,
+        "role_id": 87
+    },
+    {
+        "id": 232,
+        "slot_id": 31,
+        "role_id": 87
+    },
+    {
+        "id": 233,
+        "slot_id": 41,
+        "role_id": 87
+    },
+    {
+        "id": 234,
+        "slot_id": 17,
+        "role_id": 87
+    },
+    {
+        "id": 235,
+        "slot_id": 27,
+        "role_id": 87
+    },
+    {
+        "id": 236,
+        "slot_id": 37,
+        "role_id": 87
+    },
+    {
+        "id": 237,
+        "slot_id": 21,
+        "role_id": 67
+    },
+    {
+        "id": 238,
+        "slot_id": 41,
+        "role_id": 67
+    },
+    {
+        "id": 239,
+        "slot_id": 17,
+        "role_id": 67
+    },
+    {
+        "id": 240,
+        "slot_id": 37,
+        "role_id": 67
+    },
+    {
+        "id": 241,
+        "slot_id": 10,
+        "role_id": 90
+    },
+    {
+        "id": 242,
+        "slot_id": 30,
+        "role_id": 90
+    },
+    {
+        "id": 243,
+        "slot_id": 40,
+        "role_id": 90
+    },
+    {
+        "id": 244,
+        "slot_id": 19,
+        "role_id": 69
+    },
+    {
+        "id": 245,
+        "slot_id": 49,
+        "role_id": 69
+    },
+    {
+        "id": 246,
+        "slot_id": 59,
+        "role_id": 69
+    },
+    {
+        "id": 247,
+        "slot_id": 8,
+        "role_id": 38
+    },
+    {
+        "id": 248,
+        "slot_id": 38,
+        "role_id": 38
+    },
+    {
+        "id": 249,
+        "slot_id": 48,
+        "role_id": 38
+    },
+    {
+        "id": 250,
+        "slot_id": 18,
+        "role_id": 38
+    },
+    {
+        "id": 251,
+        "slot_id": 58,
+        "role_id": 38
+    },
+    {
+        "id": 252,
+        "slot_id": 68,
+        "role_id": 38
+    },
+    {
+        "id": 253,
+        "slot_id": 10,
+        "role_id": 20
+    },
+    {
+        "id": 254,
+        "slot_id": 30,
+        "role_id": 20
+    },
+    {
+        "id": 255,
+        "slot_id": 40,
+        "role_id": 20
+    },
+    {
+        "id": 256,
+        "slot_id": 68,
+        "role_id": 58
+    },
+    {
+        "id": 257,
+        "slot_id": 58,
+        "role_id": 58
+    },
+    {
+        "id": 258,
+        "slot_id": 18,
+        "role_id": 58
+    },
+    {
+        "id": 259,
+        "slot_id": 48,
+        "role_id": 58
+    },
+    {
+        "id": 260,
+        "slot_id": 38,
+        "role_id": 58
+    },
+    {
+        "id": 261,
+        "slot_id": 8,
+        "role_id": 58
+    },
+    {
+        "id": 262,
+        "slot_id": 88,
+        "role_id": 58
+    },
+    {
+        "id": 263,
+        "slot_id": 78,
+        "role_id": 58
+    },
+    {
+        "id": 264,
+        "slot_id": 28,
+        "role_id": 58
+    },
+    {
+        "id": 265,
+        "slot_id": 38,
+        "role_id": 28
+    },
+    {
+        "id": 266,
+        "slot_id": 48,
+        "role_id": 28
+    },
+    {
+        "id": 267,
+        "slot_id": 58,
+        "role_id": 28
+    },
+    {
+        "id": 268,
+        "slot_id": 68,
+        "role_id": 28
+    },
+    {
+        "id": 269,
+        "slot_id": 88,
+        "role_id": 28
+    },
+    {
+        "id": 270,
+        "slot_id": 78,
+        "role_id": 28
+    },
+    {
+        "id": 271,
+        "slot_id": 6,
+        "role_id": 136
+    },
+    {
+        "id": 272,
+        "slot_id": 26,
+        "role_id": 136
+    },
+    {
+        "id": 273,
+        "slot_id": 36,
+        "role_id": 136
+    },
+    {
+        "id": 274,
+        "slot_id": 68,
+        "role_id": 136
+    },
+    {
+        "id": 275,
+        "slot_id": 58,
+        "role_id": 136
+    },
+    {
+        "id": 276,
+        "slot_id": 18,
+        "role_id": 136
+    },
+    {
+        "id": 277,
+        "slot_id": 21,
+        "role_id": 37
+    },
+    {
+        "id": 278,
+        "slot_id": 31,
+        "role_id": 37
+    },
+    {
+        "id": 279,
+        "slot_id": 41,
+        "role_id": 37
+    },
+    {
+        "id": 280,
+        "slot_id": 17,
+        "role_id": 37
+    },
+    {
+        "id": 281,
+        "slot_id": 27,
+        "role_id": 37
+    },
+    {
+        "id": 282,
+        "slot_id": 37,
+        "role_id": 37
+    },
+    {
+        "id": 283,
+        "slot_id": 11,
+        "role_id": 37
+    },
+    {
+        "id": 284,
+        "slot_id": 51,
+        "role_id": 37
+    },
+    {
+        "id": 285,
+        "slot_id": 7,
+        "role_id": 37
+    },
+    {
+        "id": 286,
+        "slot_id": 47,
+        "role_id": 37
+    },
+    {
+        "id": 287,
+        "slot_id": 57,
+        "role_id": 37
+    },
+    {
+        "id": 288,
+        "slot_id": 61,
+        "role_id": 37
+    },
+    {
+        "id": 289,
+        "slot_id": 18,
+        "role_id": 48
+    },
+    {
+        "id": 290,
+        "slot_id": 58,
+        "role_id": 48
+    },
+    {
+        "id": 291,
+        "slot_id": 68,
+        "role_id": 48
+    },
+    {
+        "id": 292,
+        "slot_id": 48,
+        "role_id": 48
+    },
+    {
+        "id": 293,
+        "slot_id": 38,
+        "role_id": 48
+    },
+    {
+        "id": 294,
+        "slot_id": 8,
+        "role_id": 48
+    },
+    {
+        "id": 295,
+        "slot_id": 6,
+        "role_id": 48
+    },
+    {
+        "id": 296,
+        "slot_id": 26,
+        "role_id": 48
+    },
+    {
+        "id": 297,
+        "slot_id": 36,
+        "role_id": 48
+    },
+    {
+        "id": 298,
+        "slot_id": 88,
+        "role_id": 48
+    },
+    {
+        "id": 299,
+        "slot_id": 78,
+        "role_id": 48
+    },
+    {
+        "id": 300,
+        "slot_id": 28,
+        "role_id": 48
+    },
+    {
+        "id": 301,
+        "slot_id": 10,
+        "role_id": 110
+    },
+    {
+        "id": 302,
+        "slot_id": 30,
+        "role_id": 110
+    },
+    {
+        "id": 303,
+        "slot_id": 40,
+        "role_id": 110
+    },
+    {
+        "id": 304,
+        "slot_id": 88,
+        "role_id": 110
+    },
+    {
+        "id": 305,
+        "slot_id": 78,
+        "role_id": 110
+    },
+    {
+        "id": 306,
+        "slot_id": 28,
+        "role_id": 110
+    },
+    {
+        "id": 307,
+        "slot_id": 60,
+        "role_id": 110
+    },
+    {
+        "id": 308,
+        "slot_id": 20,
+        "role_id": 110
+    },
+    {
+        "id": 309,
+        "slot_id": 50,
+        "role_id": 110
+    },
+    {
+        "id": 310,
+        "slot_id": 60,
+        "role_id": 100
+    },
+    {
+        "id": 311,
+        "slot_id": 50,
+        "role_id": 100
+    },
+    {
+        "id": 312,
+        "slot_id": 20,
+        "role_id": 100
+    },
+    {
+        "id": 313,
+        "slot_id": 10,
+        "role_id": 100
+    },
+    {
+        "id": 314,
+        "slot_id": 30,
+        "role_id": 100
+    },
+    {
+        "id": 315,
+        "slot_id": 40,
+        "role_id": 100
+    },
+    {
+        "id": 316,
+        "slot_id": 21,
+        "role_id": 47
+    },
+    {
+        "id": 317,
+        "slot_id": 31,
+        "role_id": 47
+    },
+    {
+        "id": 318,
+        "slot_id": 41,
+        "role_id": 47
+    },
+    {
+        "id": 319,
+        "slot_id": 17,
+        "role_id": 47
+    },
+    {
+        "id": 320,
+        "slot_id": 27,
+        "role_id": 47
+    },
+    {
+        "id": 321,
+        "slot_id": 37,
+        "role_id": 47
+    },
+    {
+        "id": 322,
+        "slot_id": 61,
+        "role_id": 47
+    },
+    {
+        "id": 323,
+        "slot_id": 57,
+        "role_id": 47
+    },
+    {
+        "id": 324,
+        "slot_id": 11,
+        "role_id": 47
+    },
+    {
+        "id": 325,
+        "slot_id": 51,
+        "role_id": 47
+    },
+    {
+        "id": 326,
+        "slot_id": 7,
+        "role_id": 47
+    },
+    {
+        "id": 327,
+        "slot_id": 47,
+        "role_id": 47
+    },
+    {
+        "id": 328,
+        "slot_id": 19,
+        "role_id": 19
+    },
+    {
+        "id": 329,
+        "slot_id": 49,
+        "role_id": 19
+    },
+    {
+        "id": 330,
+        "slot_id": 59,
+        "role_id": 19
+    },
+    {
+        "id": 331,
+        "slot_id": 60,
+        "role_id": 59
+    },
+    {
+        "id": 332,
+        "slot_id": 50,
+        "role_id": 59
+    },
+    {
+        "id": 333,
+        "slot_id": 20,
+        "role_id": 59
+    },
+    {
+        "id": 334,
+        "slot_id": 49,
+        "role_id": 59
+    },
+    {
+        "id": 335,
+        "slot_id": 19,
+        "role_id": 59
+    },
+    {
+        "id": 336,
+        "slot_id": 59,
+        "role_id": 59
+    },
+    {
+        "id": 337,
+        "slot_id": 88,
+        "role_id": 78
+    },
+    {
+        "id": 338,
+        "slot_id": 78,
+        "role_id": 78
+    },
+    {
+        "id": 339,
+        "slot_id": 28,
+        "role_id": 78
+    },
+    {
+        "id": 340,
+        "slot_id": 8,
+        "role_id": 78
+    },
+    {
+        "id": 341,
+        "slot_id": 38,
+        "role_id": 78
+    },
+    {
+        "id": 342,
+        "slot_id": 48,
+        "role_id": 78
+    },
+    {
+        "id": 343,
+        "slot_id": 21,
+        "role_id": 107
+    },
+    {
+        "id": 344,
+        "slot_id": 31,
+        "role_id": 107
+    },
+    {
+        "id": 345,
+        "slot_id": 41,
+        "role_id": 107
+    },
+    {
+        "id": 346,
+        "slot_id": 17,
+        "role_id": 107
+    },
+    {
+        "id": 347,
+        "slot_id": 27,
+        "role_id": 107
+    },
+    {
+        "id": 348,
+        "slot_id": 37,
+        "role_id": 107
+    },
+    {
+        "id": 349,
+        "slot_id": 61,
+        "role_id": 107
+    },
+    {
+        "id": 350,
+        "slot_id": 57,
+        "role_id": 107
+    },
+    {
+        "id": 351,
+        "slot_id": 11,
+        "role_id": 107
+    },
+    {
+        "id": 352,
+        "slot_id": 51,
+        "role_id": 107
+    },
+    {
+        "id": 353,
+        "slot_id": 7,
+        "role_id": 107
+    },
+    {
+        "id": 354,
+        "slot_id": 47,
+        "role_id": 107
+    },
+    {
+        "id": 355,
+        "slot_id": 9,
+        "role_id": 109
+    },
+    {
+        "id": 356,
+        "slot_id": 10,
+        "role_id": 40
+    },
+    {
+        "id": 357,
+        "slot_id": 30,
+        "role_id": 40
+    },
+    {
+        "id": 358,
+        "slot_id": 40,
+        "role_id": 40
+    },
+    {
+        "id": 359,
+        "slot_id": 88,
+        "role_id": 40
+    },
+    {
+        "id": 360,
+        "slot_id": 78,
+        "role_id": 40
+    },
+    {
+        "id": 361,
+        "slot_id": 28,
+        "role_id": 40
+    },
+    {
+        "id": 362,
+        "slot_id": 29,
+        "role_id": 29
+    },
+    {
+        "id": 363,
+        "slot_id": 9,
+        "role_id": 29
+    },
+    {
+        "id": 364,
+        "slot_id": 39,
+        "role_id": 29
+    },
+    {
+        "id": 365,
+        "slot_id": 49,
+        "role_id": 29
+    },
+    {
+        "id": 366,
+        "slot_id": 19,
+        "role_id": 29
+    },
+    {
+        "id": 367,
+        "slot_id": 59,
+        "role_id": 29
+    },
+    {
+        "id": 368,
+        "slot_id": 19,
+        "role_id": 39
+    },
+    {
+        "id": 369,
+        "slot_id": 49,
+        "role_id": 39
+    },
+    {
+        "id": 370,
+        "slot_id": 59,
+        "role_id": 39
+    },
+    {
+        "id": 371,
+        "slot_id": 9,
+        "role_id": 39
+    },
+    {
+        "id": 372,
+        "slot_id": 29,
+        "role_id": 39
+    },
+    {
+        "id": 373,
+        "slot_id": 39,
+        "role_id": 39
+    },
+    {
+        "id": 374,
+        "slot_id": 57,
+        "role_id": 137
+    },
+    {
+        "id": 375,
+        "slot_id": 61,
+        "role_id": 137
+    },
+    {
+        "id": 376,
+        "slot_id": 11,
+        "role_id": 137
+    },
+    {
+        "id": 377,
+        "slot_id": 51,
+        "role_id": 137
+    },
+    {
+        "id": 378,
+        "slot_id": 7,
+        "role_id": 137
+    },
+    {
+        "id": 379,
+        "slot_id": 47,
+        "role_id": 137
+    },
+    {
+        "id": 380,
+        "slot_id": 21,
+        "role_id": 137
+    },
+    {
+        "id": 381,
+        "slot_id": 17,
+        "role_id": 137
+    },
+    {
+        "id": 382,
+        "slot_id": 31,
+        "role_id": 137
+    },
+    {
+        "id": 383,
+        "slot_id": 27,
+        "role_id": 137
+    },
+    {
+        "id": 384,
+        "slot_id": 60,
+        "role_id": 30
+    },
+    {
+        "id": 385,
+        "slot_id": 50,
+        "role_id": 30
+    },
+    {
+        "id": 386,
+        "slot_id": 20,
+        "role_id": 30
+    },
+    {
+        "id": 387,
+        "slot_id": 59,
+        "role_id": 30
+    },
+    {
+        "id": 388,
+        "slot_id": 49,
+        "role_id": 30
+    },
+    {
+        "id": 389,
+        "slot_id": 19,
+        "role_id": 30
+    },
+    {
+        "id": 390,
+        "slot_id": 9,
+        "role_id": 30
+    },
+    {
+        "id": 391,
+        "slot_id": 29,
+        "role_id": 30
+    },
+    {
+        "id": 392,
+        "slot_id": 39,
+        "role_id": 30
+    },
+    {
+        "id": 393,
+        "slot_id": 70,
+        "role_id": 129
+    },
+    {
+        "id": 394,
+        "slot_id": 80,
+        "role_id": 129
+    },
+    {
+        "id": 395,
+        "slot_id": 61,
+        "role_id": 129
+    },
+    {
+        "id": 396,
+        "slot_id": 57,
+        "role_id": 129
+    },
+    {
+        "id": 397,
+        "slot_id": 59,
+        "role_id": 129
+    },
+    {
+        "id": 398,
+        "slot_id": 60,
+        "role_id": 129
+    },
+    {
+        "id": 399,
+        "slot_id": 50,
+        "role_id": 129
+    },
+    {
+        "id": 400,
+        "slot_id": 49,
+        "role_id": 129
+    },
+    {
+        "id": 401,
+        "slot_id": 57,
+        "role_id": 17
+    },
+    {
+        "id": 402,
+        "slot_id": 61,
+        "role_id": 17
+    },
+    {
+        "id": 403,
+        "slot_id": 59,
+        "role_id": 157
+    },
+    {
+        "id": 404,
+        "slot_id": 80,
+        "role_id": 157
+    },
+    {
+        "id": 405,
+        "slot_id": 70,
+        "role_id": 157
+    },
+    {
+        "id": 406,
+        "slot_id": 49,
+        "role_id": 157
+    },
+    {
+        "id": 407,
+        "slot_id": 29,
+        "role_id": 157
+    },
+    {
+        "id": 408,
+        "slot_id": 39,
+        "role_id": 157
+    },
+    {
+        "id": 409,
+        "slot_id": 57,
+        "role_id": 157
+    },
+    {
+        "id": 410,
+        "slot_id": 61,
+        "role_id": 157
+    },
+    {
+        "id": 411,
+        "slot_id": 57,
+        "role_id": 147
+    },
+    {
+        "id": 412,
+        "slot_id": 61,
+        "role_id": 147
+    },
+    {
+        "id": 413,
+        "slot_id": 80,
+        "role_id": 147
+    },
+    {
+        "id": 414,
+        "slot_id": 70,
+        "role_id": 147
+    },
+    {
+        "id": 415,
+        "slot_id": 20,
+        "role_id": 80
+    },
+    {
+        "id": 416,
+        "slot_id": 50,
+        "role_id": 80
+    },
+    {
+        "id": 417,
+        "slot_id": 60,
+        "role_id": 80
+    },
+    {
+        "id": 418,
+        "slot_id": 60,
+        "role_id": 50
+    },
+    {
+        "id": 419,
+        "slot_id": 20,
+        "role_id": 50
+    },
+    {
+        "id": 420,
+        "slot_id": 50,
+        "role_id": 50
+    },
+    {
+        "id": 421,
+        "slot_id": 60,
+        "role_id": 70
+    },
+    {
+        "id": 422,
+        "slot_id": 50,
+        "role_id": 70
+    },
+    {
+        "id": 423,
+        "slot_id": 20,
+        "role_id": 70
+    },
+    {
+        "id": 424,
+        "slot_id": 40,
+        "role_id": 70
+    },
+    {
+        "id": 425,
+        "slot_id": 30,
+        "role_id": 70
+    },
+    {
+        "id": 426,
+        "slot_id": 10,
+        "role_id": 70
+    },
+    {
+        "id": 427,
+        "slot_id": 57,
+        "role_id": 57
+    },
+    {
+        "id": 428,
+        "slot_id": 61,
+        "role_id": 57
+    },
+    {
+        "id": 429,
+        "slot_id": 80,
+        "role_id": 57
+    },
+    {
+        "id": 430,
+        "slot_id": 70,
+        "role_id": 57
+    },
+    {
+        "id": 431,
+        "slot_id": 59,
+        "role_id": 57
+    },
+    {
+        "id": 432,
+        "slot_id": 49,
+        "role_id": 57
+    },
+    {
+        "id": 433,
+        "slot_id": 29,
+        "role_id": 117
+    },
+    {
+        "id": 434,
+        "slot_id": 39,
+        "role_id": 117
+    },
+    {
+        "id": 435,
+        "slot_id": 59,
+        "role_id": 117
+    },
+    {
+        "id": 436,
+        "slot_id": 49,
+        "role_id": 117
+    },
+    {
+        "id": 437,
+        "slot_id": 70,
+        "role_id": 117
+    },
+    {
+        "id": 438,
+        "slot_id": 80,
+        "role_id": 117
+    },
+    {
+        "id": 439,
+        "slot_id": 49,
+        "role_id": 77
+    },
+    {
+        "id": 440,
+        "slot_id": 59,
+        "role_id": 77
+    },
+    {
+        "id": 441,
+        "slot_id": 70,
+        "role_id": 77
+    },
+    {
+        "id": 442,
+        "slot_id": 80,
+        "role_id": 77
+    },
+    {
+        "id": 443,
+        "slot_id": 39,
+        "role_id": 77
+    },
+    {
+        "id": 444,
+        "slot_id": 29,
+        "role_id": 77
+    },
+    {
+        "id": 445,
+        "slot_id": 11,
+        "role_id": 7
+    },
+    {
+        "id": 446,
+        "slot_id": 51,
+        "role_id": 7
+    },
+    {
+        "id": 447,
+        "slot_id": 7,
+        "role_id": 7
+    },
+    {
+        "id": 448,
+        "slot_id": 47,
+        "role_id": 7
+    },
+    {
+        "id": 449,
+        "slot_id": 57,
+        "role_id": 7
+    },
+    {
+        "id": 450,
+        "slot_id": 61,
+        "role_id": 7
+    },
+    {
+        "id": 451,
+        "slot_id": 31,
+        "role_id": 7
+    },
+    {
+        "id": 452,
+        "slot_id": 41,
+        "role_id": 7
+    },
+    {
+        "id": 453,
+        "slot_id": 21,
+        "role_id": 7
+    },
+    {
+        "id": 454,
+        "slot_id": 17,
+        "role_id": 7
+    },
+    {
+        "id": 455,
+        "slot_id": 27,
+        "role_id": 7
+    },
+    {
+        "id": 456,
+        "slot_id": 37,
+        "role_id": 7
+    },
+    {
+        "id": 457,
+        "slot_id": 28,
+        "role_id": 98
+    },
+    {
+        "id": 458,
+        "slot_id": 78,
+        "role_id": 98
+    },
+    {
+        "id": 459,
+        "slot_id": 88,
+        "role_id": 98
+    },
+    {
+        "id": 460,
+        "slot_id": 10,
+        "role_id": 98
+    },
+    {
+        "id": 461,
+        "slot_id": 30,
+        "role_id": 98
+    },
+    {
+        "id": 462,
+        "slot_id": 40,
+        "role_id": 98
+    },
+    {
+        "id": 463,
+        "slot_id": 19,
+        "role_id": 79
+    },
+    {
+        "id": 464,
+        "slot_id": 49,
+        "role_id": 79
+    },
+    {
+        "id": 465,
+        "slot_id": 59,
+        "role_id": 79
+    },
+    {
+        "id": 466,
+        "slot_id": 20,
+        "role_id": 79
+    },
+    {
+        "id": 467,
+        "slot_id": 50,
+        "role_id": 79
+    },
+    {
+        "id": 468,
+        "slot_id": 60,
+        "role_id": 79
+    },
+    {
+        "id": 469,
+        "slot_id": 9,
+        "role_id": 79
+    },
+    {
+        "id": 470,
+        "slot_id": 29,
+        "role_id": 79
+    },
+    {
+        "id": 471,
+        "slot_id": 39,
+        "role_id": 79
+    },
+    {
+        "id": 472,
+        "slot_id": 10,
+        "role_id": 60
+    },
+    {
+        "id": 473,
+        "slot_id": 30,
+        "role_id": 60
+    },
+    {
+        "id": 474,
+        "slot_id": 40,
+        "role_id": 60
+    },
+    {
+        "id": 475,
+        "slot_id": 61,
+        "role_id": 27
+    },
+    {
+        "id": 476,
+        "slot_id": 57,
+        "role_id": 27
+    },
+    {
+        "id": 477,
+        "slot_id": 19,
+        "role_id": 49
+    },
+    {
+        "id": 478,
+        "slot_id": 49,
+        "role_id": 49
+    },
+    {
+        "id": 479,
+        "slot_id": 59,
+        "role_id": 49
+    },
+    {
+        "id": 480,
+        "slot_id": 9,
+        "role_id": 49
+    },
+    {
+        "id": 481,
+        "slot_id": 29,
+        "role_id": 49
+    },
+    {
+        "id": 482,
+        "slot_id": 39,
+        "role_id": 49
+    },
+    {
+        "id": 483,
+        "slot_id": 9,
+        "role_id": 159
+    },
+    {
+        "id": 484,
+        "slot_id": 19,
+        "role_id": 159
+    },
+    {
+        "id": 485,
+        "slot_id": 19,
+        "role_id": 99
+    },
+    {
+        "id": 486,
+        "slot_id": 9,
+        "role_id": 99
+    },
+    {
+        "id": 487,
+        "slot_id": 49,
+        "role_id": 119
+    },
+    {
+        "id": 488,
+        "slot_id": 59,
+        "role_id": 119
+    },
+    {
+        "id": 489,
+        "slot_id": 29,
+        "role_id": 119
+    },
+    {
+        "id": 490,
+        "slot_id": 39,
+        "role_id": 119
+    },
+    {
+        "id": 491,
+        "slot_id": 19,
+        "role_id": 89
+    },
+    {
+        "id": 492,
+        "slot_id": 49,
+        "role_id": 89
+    },
+    {
+        "id": 493,
+        "slot_id": 59,
+        "role_id": 89
+    },
+    {
+        "id": 494,
+        "slot_id": 9,
+        "role_id": 89
+    },
+    {
+        "id": 495,
+        "slot_id": 29,
+        "role_id": 89
+    },
+    {
+        "id": 496,
+        "slot_id": 39,
+        "role_id": 89
+    },
+    {
+        "id": 497,
+        "slot_id": 80,
+        "role_id": 167
+    },
+    {
+        "id": 498,
+        "slot_id": 70,
+        "role_id": 167
+    },
+    {
+        "id": 499,
+        "slot_id": 59,
+        "role_id": 167
+    },
+    {
+        "id": 500,
+        "slot_id": 49,
+        "role_id": 167
+    },
+    {
+        "id": 501,
+        "slot_id": 59,
+        "role_id": 149
+    },
+    {
+        "id": 502,
+        "slot_id": 49,
+        "role_id": 149
+    },
+    {
+        "id": 503,
+        "slot_id": 19,
+        "role_id": 149
+    },
+    {
+        "id": 504,
+        "slot_id": 70,
+        "role_id": 149
+    },
+    {
+        "id": 505,
+        "slot_id": 80,
+        "role_id": 149
+    },
+    {
+        "id": 506,
+        "slot_id": 57,
+        "role_id": 97
+    },
+    {
+        "id": 507,
+        "slot_id": 61,
+        "role_id": 97
+    }
+]

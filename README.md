@@ -85,11 +85,10 @@ npm run lint      # Check code quality and style
    - State updates (tactics/phase/instructions changes)
    - Future: Web Workers/Worker Threads for parallelization
 
-5. **[RENDERING.md](./docs/2D_VS_3D.md)** - Renderer/simulation separation
-   - One-way communication (simulation state → renderer, NO feedback)
-   - Renderer reads current state without affecting simulation
+5. **[COORDINATES.md](./docs/COORDINATES.md)** - Coordinate system and transforms
+   - Single 2D world space for all game logic
+   - Canvas 2D and Three.js transforms
    - Deterministic simulation independent of display framerate
-   - Camera perspectives (broadcast, tactical, 1st-person)
 
 ### Game Components
 
@@ -138,12 +137,6 @@ npm run lint      # Check code quality and style
     - 100% deterministic reproduction from seed
     - Supports accelerated playback (re-simulate at 10×, 100× speed)
     - Tactical analysis, heatmaps from replayed simulation
-
-12. **[2D_VS_3D.md](./docs/2D_VS_3D.md)** - Rendering modes
-    - 2D orthographic view (top-down tactical)
-    - 3D perspective view (realistic depth)
-    - Renderer reads simulation state for display
-    - Display framerate independence (simulation deterministic regardless of FPS)
 
 ---
 
@@ -258,7 +251,6 @@ match-sim/
 │   ├── FORMATIONS.md        # Formation system (position discipline 0.0-1.0)
 │   ├── MATCH.md             # Match flow, team phases
 │   ├── REPLAY.md            # Deterministic replay system (seed-based reproduction)
-│   ├── 2D_VS_3D.md          # Rendering modes
 │   ├── GOALKEEPERS.md       # Goalkeeper AI (TBD)
 │   ├── OUTFIELD.md          # Outfield player AI (TBD)
 │   └── TACTICS.md           # Team tactics (TBD)
@@ -301,7 +293,7 @@ match-sim/
 - ✅ WORKERS.md - Per-player AI architecture (intention-based)
 - ✅ VIEWER.md - Viewer/simulation separation with variable interval handling
 - ✅ MATCH.md - Match flow with team phases
-- ✅ 2D_VS_3D.md - Rendering modes with variable interval interpolation
+- ✅ COORDINATES.md - Coordinate system and transforms
 - ✅ ARCHITECTURE.md - High-level overview
 - ✅ README.md - This document
 

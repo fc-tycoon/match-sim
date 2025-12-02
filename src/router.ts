@@ -2,14 +2,15 @@
  * FC Tycoon™ 2027 Match Simulator - Vue Router Configuration
  *
  * Copyright © 2025 Darkwave Studios LLC. All rights reserved.
- * Licensed under FC Tycoon Match Simulator Source Available License.
+ * This file is part of FC Tycoon™ 2027 Match Simulator.
+ * Licensed under the FC Tycoon Match Simulator Source Available License.
  * See LICENSE.md in the project root for license terms.
  */
 
 import { createRouter, createWebHistory, type Router } from 'vue-router'
 import LicenseAcceptance from '@/pages/LicenseAcceptance.vue'
 import MatchSimulator from '@/pages/MatchSimulator.vue'
-import { STORAGE_KEYS } from '@/utils/constants'
+import { STORAGE_KEYS } from '@/constants'
 
 /**
  * License acceptance data structure

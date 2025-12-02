@@ -90,7 +90,7 @@ The main thread's event scheduler (see `EVENT_SCHEDULER.md`) controls ALL update
 
 AI returns INTENTIONS, game engine determines OUTCOMES:
 
-- **AI Returns**: `{ intention: 'pass', target: playerId, power: 0.8, vector: [x, y, z] }`
+- **AI Returns**: `{ intention: 'pass', target: playerId, power: 0.8, vector: {x, y} }`
 - **Game Engine Applies**: Checks if pass is possible, applies physics & skill, handles interceptions
 - **Physics Validation**: Engine validates actions against game rules and physics constraints
 - **Separation of Concerns**: AI decides what to TRY, engine decides what HAPPENS
@@ -351,7 +351,7 @@ Each operation uses player class methods (updateTeamInstructions, updateTeamPhas
 
 **Movement Intention**:
 - **type**: 'move'
-- **targetPosition**: World space coordinates (x, z)
+- **targetPosition**: World space coordinates (x, y)
 - **moveSpeed**: 0.0-1.0 fraction of max speed
 
 **Pass Intention**:
@@ -361,7 +361,7 @@ Each operation uses player class methods (updateTeamInstructions, updateTeamPhas
 
 **Shot Intention**:
 - **type**: 'shoot'
-- **targetGoalPosition**: Where in goal (x, z coordinates)
+- **targetGoalPosition**: Where in goal (x, y coordinates)
 - **power**: 0.0-1.0
 
 **Tackle Intention**:
@@ -371,12 +371,12 @@ Each operation uses player class methods (updateTeamInstructions, updateTeamPhas
 
 **Dribble Intention**:
 - **type**: 'dribble'
-- **direction**: Angle in radians
+- **direction**: Unit vector (x, y)
 - **speed**: 0.0-1.0
 
 **Sprint Intention**:
 - **type**: 'sprint'
-- **targetPosition**: World space coordinates (x, z)
+- **targetPosition**: World space coordinates (x, y)
 - **maxEffort**: true (drain stamina faster)
 
 **Idle Intention**:

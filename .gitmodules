@@ -1,0 +1,3 @@
+[submodule "assets/3d-assets"]
+	path = assets/3d-assets
+	url = https://github.com/fc-tycoon/match-sim-assets.git

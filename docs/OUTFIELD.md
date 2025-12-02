@@ -352,7 +352,7 @@ Player's internal worker receives sanitized state (sensor-based perception):
 
 **AI Action Structure**:
 - `action`: 'move' | 'pass' | 'shoot' | 'dribble' | 'tackle' | 'shield'
-- `target`: {x, z} (movement target or pass target)
+- `target`: {x, y} (movement target or pass target, world space coordinates)
 - `power`: 0.0-1.0 (shot/pass power)
 - `sprint`: boolean (sprint or jog)
 - `urgency`: 0.0-1.0 (action urgency, affects animation speed)

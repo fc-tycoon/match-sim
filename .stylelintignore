@@ -1,0 +1,16 @@
+# Ignore files starting with _
+**/_*
+
+# Ignore files with "copy" (case insensitive)
+**/*[cC][oO][pP][yY]*
+
+# Ignore files with "backup" (case insensitive)
+**/*[bB][aA][cC][kK][uU][pP]*
+
+# "Old" files (case insensitive, whole word only - surrounded by non-alpha)
+# e.g. file-old-version.js
+**/*[-_.][oO][lL][dD][-_.].*
+# e.g. file-old.js
+**/*[-_.][oO][lL][dD].*
+# e.g. old-file.js
+**/[oO][lL][dD][-_.].*

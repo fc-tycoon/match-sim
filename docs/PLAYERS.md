@@ -6,24 +6,22 @@ Players are the primary entities on the field during a match simulation. They ar
 
 **Class Architecture**: All player types extend from a common `Player` base class containing shared functionality (coordinate transformations, distance calculations, vision checks, etc.). Outfield players and Goalkeepers extend this base class with specialized behavior.
 
-**CRITICAL**: Players create and manage their own **Web Workers internally** for AI computation. Web Workers are an internal implementation detail of the Player class - the match engine only interacts with Player objects.
+**AI Architecture**: Players use a **Hybrid AI Architecture** (HFSM + Utility + BT) running on the main thread. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for details.
 
 **Player Class Hierarchy**:
 
 **Base Player Class** (shared functionality):
-- Common properties: ID, team ID, position (world space), velocity, facing angle (radians)
-- Internal Web Worker: Created in constructor, terminated in destroy()
-- Common methods: `worldToTeamRelative()`, `teamToWorld()`, `headingAngle()`, `distanceTo()`, `isInVisionCone()`, `makeDecision()`, `destroy()`
+- Common properties: ID, team ID, position (world space), velocity, facing direction (unit vector)
+- Common methods: `worldToTeamRelative()`, `teamToWorld()`, `distanceTo()`, `isInVisionCone()`, `makeDecision()`, `destroy()`
 
 **OutfieldPlayer** (extends Player):
-- Formation position: Normalized -1..1 in team-relative space
+- Formation position: Normalized -1..1 slot coordinates (relative to team center of mass)
 - Formation-specific AI interface
-- Inherits worker management from base Player class
 
 **Goalkeeper** (extends Player):
 - Goalkeeper-specific AI interface
 - NOT part of formation or center of mass
-- Inherits worker management from base Player class
+
 
 ## Player Types
 
@@ -117,8 +115,8 @@ Players do not have omniscient knowledge of all entities on the field. Their per
 **Vision Data** (recalculated during deterministic replay):
 - **Player Position** (world space, feet): For calculating eye position at runtime
 - **Player Height**: To compute eye offset (97% of height)
-- **Body Facing**: Player body rotation (world space, radians)
-- **Head Yaw**: Head rotation LEFT/RIGHT **relative to body** (radians)
+- **Body Facing**: Player body direction (world space, unit vector)
+- **Head Yaw**: Head rotation LEFT/RIGHT **relative to body** (radians offset from body direction)
 - **Head Pitch**: Head rotation UP/DOWN **relative to body** (radians, positive = looking down)
 - **Vision Cone**: Field of view (~120° horizontal, ~90° vertical)
 - **Vision Range**: Maximum perception distance (~50 meters)
@@ -342,15 +340,15 @@ This flexible system allows the same player to adapt their positioning and behav
 When queried for an action, player AI receives:
 
 **Player's Own State**:
-- Position (world space coordinates x, y, z)
+- Position (world space coordinates x, y)
 - Velocity vector
 - Stamina (0.0-1.0)
 - Has ball possession (boolean)
-- Head orientation (yaw, pitch in radians)
+- Head orientation (yaw, pitch offsets from body direction)
 - Eye position for vision cone calculations
 
 **Visible Players** (limited by vision cone and awareness):
-- Player ID, position (fuzzy/imprecise with Gaussian noise), team (1 or 2)
+- Player ID, position (fuzzy/imprecise with Gaussian noise), team (Home or Away)
 - Velocity (may be estimated), distance from this player (meters)
 - Only players within FOV (~120° horizontal) and range (~50m)
 - Limited information based on vision system
@@ -363,14 +361,14 @@ When queried for an action, player AI receives:
 
 **AI Input Structure**:
 Player AI receives comprehensive input including:
-- Player state: Position, velocity, stamina, body/head orientation, eye position
+- Player state: Position, velocity, stamina, body direction, head offsets, eye position
 - Visible players: ID, distance, perceived position, visibility flags
 - Ball: Position, velocity, visibility
-- Formation/tactical context: Center of mass, assigned position, role, style, tendencies (team-relative coordinates)
+- Formation/tactical context: Center of mass, assigned position, role, style, tendencies, attackDir
 
 **Key Vision System Features**:
-- **headYaw/headPitch**: Where player is currently looking
-- **eyePosition**: 3D position of eyes for 1st-person camera
+- **headYaw/headPitch**: Where player is currently looking (relative to body)
+- **eyePosition**: World position of eyes for 1st-person camera
 - **visiblePlayers**: Only includes players within vision cone (~120° FOV) and range (~50m)
 - **ball visibility**: Ball only visible if within vision cone
 - **distance**: Added to visible objects for AI decision-making
@@ -382,12 +380,12 @@ Player AI returns an action decision and optionally updates head orientation:
 **Action Types**: 'move' | 'kick' | 'tackle' | 'sprint' | 'idle'
 
 **Action-Specific Parameters**:
-- **move**: Target position (x, z), movement speed
+- **move**: Target position (x, y), movement speed
 - **kick**: Power, direction, curl/spin
 - **tackle**: Direction of tackle attempt
 
 **Optional Head Movement** (for vision system):
-- `headTarget`: Target yaw (radians), target pitch (radians)
+- `headTarget`: Target yaw (radians offset), target pitch (radians)
 - Head smoothly rotates toward target over time (not instant)
 
 **Optional State Preservation**:

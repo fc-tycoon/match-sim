@@ -12,6 +12,7 @@
 	"editor.codeActions.triggerOnFocusChange": false,
 	"editor.codeLens": false,
 	"editor.folding": false,
+	"github.copilot.nextEditSuggestions.enabled": true,
 	"chat.tools.terminal.autoApprove": {
 		"rm": false,
 		"rmdir": false,
@@ -35,6 +36,10 @@
 		"**/.vite/**": true,
 		"**/node_modules/**": true
 	},
+
+	// TypeScript/Volar settings
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
 
 	// ESLint settings
 	"eslint.validate": [

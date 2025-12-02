@@ -1,0 +1,98 @@
+[
+    {
+        "id": 1,
+        "abbr": "GK",
+        "name": "Goalkeeper",
+        "unit": 1
+    },
+    {
+        "id": 2,
+        "abbr": "RB",
+        "name": "Right Back",
+        "unit": 2
+    },
+    {
+        "id": 3,
+        "abbr": "LB",
+        "name": "Left Back",
+        "unit": 2
+    },
+    {
+        "id": 4,
+        "abbr": "CD",
+        "name": "Central Defender",
+        "unit": 2
+    },
+    {
+        "id": 6,
+        "abbr": "DM",
+        "name": "Defensive Midfielder",
+        "unit": 3
+    },
+    {
+        "id": 7,
+        "abbr": "RW",
+        "name": "Right Winger",
+        "unit": 4
+    },
+    {
+        "id": 8,
+        "abbr": "CM",
+        "name": "Central Midfielder",
+        "unit": 3
+    },
+    {
+        "id": 9,
+        "abbr": "ST",
+        "name": "Striker",
+        "unit": 4
+    },
+    {
+        "id": 10,
+        "abbr": "AM",
+        "name": "Attacking Midfielder",
+        "unit": 3
+    },
+    {
+        "id": 11,
+        "abbr": "LW",
+        "name": "Left Winger",
+        "unit": 4
+    },
+    {
+        "id": 12,
+        "abbr": "RWB",
+        "name": "Right Wing-Back",
+        "unit": 2
+    },
+    {
+        "id": 13,
+        "abbr": "LWB",
+        "name": "Left Wing-Back",
+        "unit": 2
+    },
+    {
+        "id": 14,
+        "abbr": "RM",
+        "name": "Right Midfielder",
+        "unit": 3
+    },
+    {
+        "id": 15,
+        "abbr": "LM",
+        "name": "Left Midfielder",
+        "unit": 3
+    },
+    {
+        "id": 19,
+        "abbr": "CF",
+        "name": "Centre Forward",
+        "unit": 4
+    },
+    {
+        "id": 20,
+        "abbr": "SS",
+        "name": "Shadow Striker",
+        "unit": 4
+    }
+]

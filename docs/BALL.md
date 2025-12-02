@@ -6,15 +6,28 @@ The ball is the central entity in the match simulation. All player actions revol
 
 ## Ball Entity
 
+### Position Properties
+
+The ball maintains **two position representations** for different use cases:
+
+**position3d** (THREE.Vector3) - Physics & Rendering:
+- `position3d.x`: World X (goal-to-goal, -52.5 to +52.5 meters)
+- `position3d.y`: Height above ground (vertical UP, 0 = ground level)
+- `position3d.z`: World Y (touchline-to-touchline, -34 to +34 meters)
+
+**position2d** (THREE.Vector2) - Gameplay Logic:
+- `position2d.x`: World X (goal-to-goal, -52.5 to +52.5 meters)
+- `position2d.y`: World Y (touchline-to-touchline, -34 to +34 meters)
+
+**Coordinate Mapping**:
+```
+position2d.x = position3d.x   (World X = Three.js X)
+position2d.y = position3d.z   (World Y = Three.js Z)
+```
+
 ### Physical Properties
 
-The ball has the following physical attributes:
-
-- **Position**: 3D coordinates (x, y, z) in meters (world space)
-  - `x`: Left-right position on field (negative = left, positive = right)
-  - `y`: Height above ground (0 = ground level)
-  - `z`: Down-field position (negative = toward Team 2 goal, positive = toward Team 1 goal)
-- **Velocity**: 3D velocity vector (vx, vy, vz) in meters/second (world space)
+- **Velocity**: 3D velocity vector (vx, vHeight, vz) in meters/second (Three.js space)
 - **Spin**: 3D angular velocity (wx, wy, wz) in radians/second (**MANDATORY** - not optional!)
 - **Mass**: Standard football mass (~0.43 kg)
 - **Radius**: Standard football radius (~0.11 m)
@@ -85,8 +98,8 @@ Each physics update (dynamic 5-20ms intervals):
 
 Ball at rest on ground:
 
-- **Velocity**: (0, 0, 0)
-- **Position**: y = 0 (ground level)
+- **Velocity**: (vx=0, vy=0, vHeight=0)
+- **Position**: height = 0 (ground level)
 - **Friction**: No rolling friction applied
 - **Transitions**: Kicked → Flying/Rolling
 
@@ -94,8 +107,8 @@ Ball at rest on ground:
 
 Ball rolling on ground:
 
-- **Velocity**: vx, vz > 0, vy = 0
-- **Position**: y = 0 (ground level)
+- **Velocity**: vx, vy > 0, vHeight = 0
+- **Position**: height = 0 (ground level)
 - **Friction**: Applied each frame, decelerating ball
 - **Deceleration**: ~0.5-1.0 m/s² (configurable)
 - **Transitions**: Stops → Stationary, Kicked → Flying
@@ -104,9 +117,9 @@ Ball rolling on ground:
 
 Ball bouncing off ground:
 
-- **Velocity**: vy < 0 (moving downward)
-- **Position**: y = 0 (collision point)
-- **Bounce**: vy = -vy × restitution (e.g., 0.7)
+- **Velocity**: vHeight < 0 (moving downward)
+- **Position**: height = 0 (collision point)
+- **Bounce**: vHeight = -vHeight × restitution (e.g., 0.7)
 - **Energy Loss**: Each bounce reduces vertical velocity
 - **Transitions**: Multiple bounces → Rolling → Stationary
 
@@ -114,9 +127,9 @@ Ball bouncing off ground:
 
 Ball in the air:
 
-- **Velocity**: vx, vy, vz all potentially non-zero
-- **Position**: y > 0 (above ground)
-- **Gravity**: Applied each frame (-9.8 m/s² on Y-axis)
+- **Velocity**: vx, vy, vHeight all potentially non-zero
+- **Position**: height > 0 (above ground)
+- **Gravity**: Applied each frame (-9.8 m/s² on height axis)
 - **Air Resistance (Drag)**: Applied proportional to velocity²
 - **Magnus Effect**: Lift force from spin curves trajectory (**ALWAYS ACTIVE**)
 - **Spin Decay**: Angular velocity decreases over time due to air friction
@@ -198,17 +211,17 @@ Each frame, for player in possession:
 
 Ball is out of play when:
 
-- **Touchline**: x < -fieldWidth/2 or x > fieldWidth/2
-- **Goal Line**: z < -fieldLength/2 or z > fieldLength/2 (and not in goal)
-- **Above Maximum Height**: y > 50m (unrealistic height, error condition)
+- **Touchline**: y < -fieldWidth/2 or y > fieldWidth/2
+- **Goal Line**: x < -fieldLength/2 or x > fieldLength/2 (and not in goal)
+- **Above Maximum Height**: height > 50m (unrealistic height, error condition)
 
 ### Restart Actions
 
 When ball goes out:
 
-- **Throw-In**: Ball crossed touchline (x boundary)
-- **Goal Kick**: Ball crossed goal line (z boundary), last touched by attacking team
-- **Corner Kick**: Ball crossed goal line (z boundary), last touched by defending team
+- **Throw-In**: Ball crossed touchline (y boundary)
+- **Goal Kick**: Ball crossed goal line (x boundary), last touched by attacking team
+- **Corner Kick**: Ball crossed goal line (x boundary), last touched by defending team
 - **Goal**: Ball crossed goal line inside goal posts and under crossbar
 
 ### Out of Play State
@@ -227,7 +240,7 @@ While ball is out:
 
 Ball crosses goal line inside goal when:
 
-- **Position Check**: z < goalLineZ (defending team's goal)
+- **Position Check**: x < goalLineX or x > goalLineX (depending on which goal)
 - **Width Check**: -goalWidth/2 < x < goalWidth/2
 - **Height Check**: 0 < y < goalHeight (2.44m)
 - **Fully Crossed**: Entire ball crosses line (check ball center + radius)
@@ -249,12 +262,12 @@ When goal scored:
 
 For simple physics (no air resistance):
 
-- **Horizontal Velocity**: Constant (vx, vz)
-- **Vertical Velocity**: vy = vy0 - g × t
+- **Horizontal Velocity**: Constant (vx, vy)
+- **Vertical Velocity**: vHeight = vHeight0 - g × t
 - **Position**: 
   - x = x0 + vx × t
-  - y = y0 + vy0 × t - 0.5 × g × t²
-  - z = z0 + vz × t
+  - y = y0 + vy × t
+  - height = height0 + vHeight0 × t - 0.5 × g × t²
 
 ### With Air Resistance
 
@@ -427,9 +440,9 @@ Ball rendered as:
 
 In 2D top-down view:
 
-- **Circle**: Solid circle representing ball position (world space X/Z projection)
+- **Circle**: Solid circle representing ball position (world space X/Y projection)
 - **Trail**: Optional trajectory trail showing recent path (last 1-2 seconds)
-- **Height Indicator**: Color or size variation showing Y position
+- **Height Indicator**: Color or size variation showing height position
   - Ground level (y ≈ 0): Normal size/color
   - Low airborne (y < 2m): Slightly larger/brighter
   - High airborne (y ≥ 2m): Much larger/different color
@@ -482,9 +495,9 @@ Different physics profiles for variety:
 ### State Data Structure
 
 **Ball State** (Full Precision):
-- **Position**: `{x, y, z}` in meters (world space)
-- **Velocity**: `{x, y, z}` in m/s (world space)
-- **Spin**: `{x, y, z}` in rad/s (MANDATORY - always present)
+- **Position**: `{x, y, height}` in meters (world space, where x = goal-to-goal, y = touchline, height = vertical)
+- **Velocity**: `{x, y, height}` in m/s (world space)
+- **Spin**: `{spinX, spinY, spinZ}` in rad/s (MANDATORY - always present, uses Three.js axis convention)
 - **Possession**: Player ID or null
 - **Last Touch**: Player ID
 - **Out of Play**: Boolean flag

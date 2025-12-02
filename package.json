@@ -4,6 +4,9 @@
 	"version": "27.0.0-alpha.1",
 	"description": "FC Tycoon 2027 Match Simulator (alpha)",
 	"type": "module",
+	"engines": {
+		"node": "^20.19.0 || >=22.12.0"
+	},
 	"private": true,
 	"license": "SEE LICENSE IN LICENSE.md",
 	"author": {
@@ -12,15 +15,18 @@
 	},
 	"scripts": {
 		"start": "vite",
+		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
-		"lint": "eslint src",
-		"lint:fix": "eslint src --fix",
+		"lint": "eslint src && npm run lint:css",
+		"lint:fix": "eslint src --fix && npm run lint:css -- --fix",
 		"lint:quiet": "eslint src --quiet",
-		"lint:trim": "eslint src --fix --rule \"no-trailing-spaces: error\""
+		"lint:trim": "eslint src --fix --rule \"no-trailing-spaces: error\"",
+		"lint:css": "stylelint \"src/**/*.{css,vue}\""
 	},
 	"dependencies": {
 		"@element-plus/icons-vue": "^2.3.2",
+		"@vueuse/core": "^14.0.0",
 		"chart.js": "^4.5.1",
 		"element-plus": "^2.11.5",
 		"marked": "^17.0.0",
@@ -31,15 +37,22 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",
-		"@types/node": "^24.10.1",
+		"@tsconfig/node22": "^22.0.2",
+		"@types/node": "^22.18.11",
 		"@types/three": "^0.180.0",
 		"@typescript-eslint/eslint-plugin": "^8.46.4",
 		"@typescript-eslint/parser": "^8.46.4",
 		"@vitejs/plugin-vue": "^6.0.1",
+		"@vue/eslint-config-typescript": "^14.6.0",
+		"@vue/tsconfig": "^0.8.1",
 		"eslint": "^9.39.1",
 		"eslint-plugin-vue": "^10.5.1",
 		"source-map-support": "^0.5.21",
+		"stylelint": "^16.25.0",
+		"stylelint-config-recommended-vue": "^1.6.1",
+		"stylelint-config-standard": "^39.0.1",
 		"typescript": "^5.9.3",
-		"vite": "^7.1.12"
+		"vite": "^7.1.12",
+		"vue-tsc": "^3.1.1"
 	}
 }
