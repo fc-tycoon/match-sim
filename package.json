@@ -1,7 +1,7 @@
 {
 	"name": "fc-tycoon-match-sim",
 	"productName": "fc-tycoon-match-sim",
-	"version": "27.0.0-alpha.1",
+	"version": "27.0.0-alpha.2",
 	"description": "FC Tycoon 2027 Match Simulator (alpha)",
 	"type": "module",
 	"engines": {
