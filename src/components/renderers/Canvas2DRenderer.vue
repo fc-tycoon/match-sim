@@ -333,10 +333,10 @@ export default defineComponent({
 						ctx.save()
 						ctx.translate(px, py)
 
-						// bodyDir is in World space, which now matches canvas space (after Y-flip)
-						// Angle: atan2(y, x) gives counter-clockwise from +X
+						// bodyDir is in World space. After Y-flip transform, rotation is inverted,
+						// so we negate the angle to maintain correct visual direction.
 						const angle = Math.atan2(bodyDir.y, bodyDir.x)
-						ctx.rotate(angle)
+						ctx.rotate(-angle)
 
 						// Draw Cone (Sector)
 						const coneRadius = 15  // 15m (world units, no scaling needed)
@@ -385,12 +385,14 @@ export default defineComponent({
 					if (this.showCones) {
 						const angle = Math.atan2(bodyDir.y, bodyDir.x)
 						const arrowDist = pRadius + 2 / this.scale
+
+						// Arrow position uses world coordinates (pre-Y-flip math)
 						const ax = px + Math.cos(angle) * arrowDist
 						const ay = py + Math.sin(angle) * arrowDist
 
 						ctx.save()
 						ctx.translate(ax, ay)
-						ctx.rotate(angle)
+						ctx.rotate(-angle)
 						const arrowSize = 3 / this.scale
 						ctx.beginPath()
 						ctx.moveTo(0, 0)
@@ -444,8 +446,9 @@ export default defineComponent({
 				if (!p.body) return false
 
 				// PlayerBody.position is Vector2 with x (goal-to-goal) and y (touchline)
-				const dx = p.body.position.x - worldX
-				const dy = p.body.position.y - worldY
+				// Vector from player to click (click - player)
+				const dx = worldX - p.body.position.x
+				const dy = worldY - p.body.position.y
 				const dist = Math.sqrt(dx * dx + dy * dy)
 
 				// 1. Check body click (1.5m radius)
@@ -453,10 +456,10 @@ export default defineComponent({
 
 				// 2. Check cone click
 				if (this.showCones && dist < 15) {
-					// World angle (same as canvas after Y-flip)
+					// Player facing direction in world space
 					const playerAngle = Math.atan2(p.body.bodyDir.y, p.body.bodyDir.x)
 
-					// Angle from player to click in world space
+					// Angle from player to click point
 					const clickAngle = Math.atan2(dy, dx)
 
 					// Difference

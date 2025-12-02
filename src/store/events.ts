@@ -8,23 +8,49 @@
  */
 
 import { reactive, App } from 'vue'
+import { match } from './match'
 
+/**
+ * Log event severity levels.
+ */
+export type LogLevel = 'debug' | 'log' | 'info' | 'warning' | 'error'
+
+/**
+ * Log event interface.
+ */
 export interface LogEvent {
 	id: number
 	tick: number
 	message: string
-	type?: string
+	level: LogLevel
 }
 
+let seq: number = 0
+
+/**
+ * Events Store
+ *
+ * Centralized logging for match events. Automatically captures the current
+ * tick from the match scheduler.
+ */
 export const events = reactive({
 	items: [] as LogEvent[],
 
-	log(message: string, tick: number = 0, type: string = 'info') {
+	/**
+	 * Internal logging method. All public methods delegate to this.
+	 *
+	 * @param {string} message - The log message
+	 * @param {LogLevel} level - The log level
+	 */
+	log(message: string, level: LogLevel = 'log') {
+		// Get current tick from match scheduler
+		const tick = match.engine?.realtime?.scheduler.currentTick ?? match.tick
+
 		this.items.push({
-			id: Date.now() + Math.random(),
+			id: seq++,
 			tick,
 			message,
-			type,
+			level,
 		})
 
 		// Keep log size manageable
@@ -33,6 +59,45 @@ export const events = reactive({
 		}
 	},
 
+	/**
+	 * Log a debug message.
+	 *
+	 * @param {string} message - The debug message
+	 */
+	debug(message: string) {
+		this.log(message, 'debug')
+	},
+
+	/**
+	 * Log an info message.
+	 *
+	 * @param {string} message - The info message
+	 */
+	info(message: string) {
+		this.log(message, 'info')
+	},
+
+	/**
+	 * Log a warning message.
+	 *
+	 * @param {string} message - The warning message
+	 */
+	warning(message: string) {
+		this.log(message, 'warning')
+	},
+
+	/**
+	 * Log an error message.
+	 *
+	 * @param {string} message - The error message
+	 */
+	error(message: string) {
+		this.log(message, 'error')
+	},
+
+	/**
+	 * Clear all log events.
+	 */
 	clear() {
 		this.items = []
 	},

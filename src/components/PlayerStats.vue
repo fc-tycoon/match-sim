@@ -15,7 +15,7 @@
 	>
 		<div class="stats-header">
 			<span class="player-number">{{ player.number }}</span>
-			<span class="player-team">{{ player.team === 'home' ? match.homeTeam : match.awayTeam }}</span>
+			<span class="player-team">{{ player.team?.name || 'Unknown' }}</span>
 			<button
 				class="close-btn"
 				@click="$emit('close')"

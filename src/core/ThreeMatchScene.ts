@@ -460,7 +460,7 @@ export class ThreeMatchScene {
 	updatePlayers(players: Player[], config: any) {
 		// Debug: Log player count once
 		if (!this._playerCountLogged) {
-			console.log(`[ThreeMatchScene] ========== PLAYER DEBUG ==========`)
+			console.log('[ThreeMatchScene] ========== PLAYER DEBUG ==========')
 			console.log(`[ThreeMatchScene] updatePlayers called with ${players.length} players`)
 			console.log(`[ThreeMatchScene] modelCount in factory: ${this.playerModelFactory.modelCount}`)
 			this._playerCountLogged = true

@@ -49,7 +49,7 @@
 					No events yet
 				</div>
 				<div
-					v-for="event in $events.items"
+					v-for="event in reversedEvents"
 					:key="event.id"
 					class="log-entry"
 				>
@@ -91,6 +91,18 @@
 						@mousedown.stop
 					>
 						<ElIcon><VideoPlay /></ElIcon>
+					</ElButton>
+				</ElTooltip>
+				<ElTooltip content="Step 1 Tick" placement="bottom" :show-after="0">
+					<ElButton
+						circle
+						type="info"
+						size="small"
+						:disabled="matchFinished"
+						@click="stepOneTick"
+						@mousedown.stop
+					>
+						<ElIcon><Right /></ElIcon>
 					</ElButton>
 				</ElTooltip>
 				<ElTooltip content="Pause" placement="bottom" :show-after="0">
@@ -187,23 +199,44 @@
 						Cones
 					</ElButton>
 				</ElTooltip>
+				<ElTooltip content="Current Tick" placement="bottom" :show-after="0">
+					<span class="tick-display">{{ $match.tick }}</span>
+				</ElTooltip>
 			</div>
 			<div class="controls-row slider-row">
 				<span class="slider-label">Speed</span>
 				<div class="slider-container" @mousedown.stop @pointerdown.stop @touchstart.stop>
 					<ElSlider
-						v-model="speed"
-						:min="0.1"
-						:max="10.0"
-						:step="0.1"
+						v-model="speedSliderValue"
+						:min="0"
+						:max="48"
+						:step="1"
+						:show-tooltip="false"
 						size="small"
 					/>
 				</div>
+				<span class="speed-display">{{ formatSpeed(speed) }}</span>
+				<ElButton
+					size="small"
+					class="max-speed-btn"
+					@click="speed = 1200"
+					@mousedown.stop
+				>
+					MAX
+				</ElButton>
 			</div>
 		</div>
 
 		<!-- Settings Dialog -->
-		<ElDialog v-model="showSettings" title="Settings" width="600px" class="settings-dialog">
+		<ElDialog v-model="showSettings" width="600px" class="settings-dialog">
+			<template #header>
+				<div class="dialog-header">
+					<span class="dialog-team-name">{{ $match.homeTeam }}</span>
+					<span class="dialog-score">{{ $match.homeScore }} - {{ $match.awayScore }}</span>
+					<span class="dialog-team-name">{{ $match.awayTeam }}</span>
+					<span class="dialog-tick">Tick: {{ $match.tick }}</span>
+				</div>
+			</template>
 			<div class="settings-content">
 				<div class="setting-item">
 					<span>Show Vision Cones</span>
@@ -214,8 +247,14 @@
 					<ElSwitch v-model="$settings.debug.showFormationAABB" />
 				</div>
 				<div class="setting-item">
-					<span>Match Speed (x{{ speed.toFixed(1) }})</span>
-					<ElSlider v-model="speed" :min="0.1" :max="10.0" :step="0.1" />
+					<span>Match Speed ({{ formatSpeed(speed) }})</span>
+					<ElSlider
+						v-model="speedSliderValue"
+						:min="0"
+						:max="48"
+						:step="1"
+						:show-tooltip="false"
+					/>
 				</div>
 				<div class="setting-item">
 					<span>Player Model</span>
@@ -543,6 +582,13 @@ export default defineComponent({
 			return this.formattedTimeFromTick(this.$match.tick)
 		},
 
+		/**
+		 * Events in reverse order (newest first) for display.
+		 */
+		reversedEvents() {
+			return [...this.$events.items].reverse()
+		},
+
 		matchFinished() {
 			// Match is finished if we have started (tick > 0) and no events left
 			const engine = this.$match.engine
@@ -558,6 +604,23 @@ export default defineComponent({
 		awayColorHex: {
 			get() { return '#' + this.playerConfig.awayColor.toString(16).padStart(6, '0') },
 			set(val: string) { this.playerConfig.awayColor = parseInt(val.replace('#', ''), 16) },
+		},
+
+		/**
+		 * Non-linear speed slider mapping.
+		 * Position 0-19: 0.1 to 2.0 in 0.1 steps (20 values)
+		 * Position 20-28: 3.0 to 10.0 in 1.0 steps (9 values)
+		 * Position 29-37: 20 to 100 in 10 steps (9 values)
+		 * Position 38-48: 200 to 1200 in 100 steps (11 values)
+		 */
+		speedSliderValue: {
+			get(): number {
+				return this.speedToSliderPosition(this.speed)
+			},
+
+			set(pos: number) {
+				this.speed = this.sliderPositionToSpeed(pos)
+			},
 		},
 
 		dragStyle() {
@@ -795,6 +858,65 @@ export default defineComponent({
 
 	methods: {
 		/**
+		 * Convert slider position (0-48) to actual speed value.
+		 * Non-linear mapping with different step sizes per range.
+		 *
+		 * @param {number} pos - Slider position (0-48)
+		 * @returns {number} Speed multiplier
+		 */
+		sliderPositionToSpeed(pos: number): number {
+			if (pos <= 19) {
+				// Position 0-19: 0.1 to 2.0 in 0.1 steps
+				return Math.round((0.1 + pos * 0.1) * 10) / 10
+			} else if (pos <= 28) {
+				// Position 20-28: 3.0 to 10.0 in 1.0 steps (pos 20 = 3, pos 28 = 10)
+				return 3 + (pos - 20)
+			} else if (pos <= 37) {
+				// Position 29-37: 20 to 100 in 10 steps (pos 29 = 20, pos 37 = 100)
+				return 20 + (pos - 29) * 10
+			} else {
+				// Position 38-48: 200 to 1200 in 100 steps (pos 38 = 200, pos 48 = 1200)
+				return 200 + (pos - 38) * 100
+			}
+		},
+
+		/**
+		 * Convert actual speed value to slider position (0-48).
+		 * Inverse of sliderPositionToSpeed.
+		 *
+		 * @param {number} speed - Speed multiplier
+		 * @returns {number} Slider position (0-48)
+		 */
+		speedToSliderPosition(speed: number): number {
+			if (speed <= 2.0) {
+				// 0.1 to 2.0 → position 0-19
+				return Math.round((speed - 0.1) / 0.1)
+			} else if (speed <= 10) {
+				// 3.0 to 10.0 → position 20-28
+				return 20 + Math.round(speed - 3)
+			} else if (speed <= 100) {
+				// 20 to 100 → position 29-37
+				return 29 + Math.round((speed - 20) / 10)
+			} else {
+				// 200 to 1200 → position 38-48
+				return 38 + Math.round((speed - 200) / 100)
+			}
+		},
+
+		/**
+		 * Format speed value for display.
+		 *
+		 * @param {number} speed - Speed multiplier
+		 * @returns {string} Formatted speed string
+		 */
+		formatSpeed(speed: number): string {
+			if (speed < 10) {
+				return 'x' + speed.toFixed(1)
+			}
+			return 'x' + Math.round(speed)
+		},
+
+		/**
 		 * Initialize the match with current seed.
 		 * Called on created() and after reset.
 		 */
@@ -811,7 +933,7 @@ export default defineComponent({
 				engine.realtime.onError = (err: unknown) => {
 					const error = err as Error
 					console.error('Scheduler Error:', error)
-					this.$events.log(`Error: ${error.message}`, this.$match.tick, 'error')
+					this.$events.error(`Error: ${error.message}`)
 				}
 			}
 
@@ -825,14 +947,14 @@ export default defineComponent({
 			// Schedule debug tick counters 1-10
 			for (let i = 1; i <= 10; i++) {
 				this.$match.scheduleDebugEvent(i, (e) => {
-					this.$events.log(`Tick ${e.tick}`, e.tick)
+					this.$events.debug(`Tick ${e.tick}`)
 				})
 			}
 
 			// Schedule 1-second ticker
 			const scheduleTicker = () => {
 				this.$match.scheduleDebugEvent(1000, (_e) => {
-					this.$events.log('Match Timer: 1 Second Elapsed', this.$match.tick)
+					this.$events.log('Match Timer: 1 Second Elapsed')
 					scheduleTicker()
 				})
 			}
@@ -855,6 +977,39 @@ export default defineComponent({
 		pauseMatch() {
 			if (!this.$match.running) return
 			this.$match.stop()
+		},
+
+		/**
+		 * Advance the simulation by exactly 1 tick.
+		 * If the scheduler is running, stops it first.
+		 */
+		async stepOneTick() {
+			if (this.matchFinished) {
+				this.$events.warning('Match is already finished, cannot step further.')
+				return
+			}
+
+			const engine = this.$match.engine
+			if (!engine?.realtime) {
+				console.error('No real-time scheduler available')
+				return
+			}
+
+			// Stop if running
+			if (this.$match.running) {
+				await engine.realtime.stop()
+				this.$match.running = false
+			}
+
+			// Advance by exactly 1 tick
+			await engine.realtime.scheduler.advance(1)
+
+			// Update displayed tick
+			this.$match.tick = engine.realtime.scheduler.currentTick
+
+			// Log status with remaining event count
+			const eventCount = engine.realtime.scheduler.eventCount
+			this.$events.info(`Stepped to tick ${this.$match.tick}. Events remaining: ${eventCount}`)
 		},
 
 		resetMatch() {
@@ -1205,6 +1360,19 @@ export default defineComponent({
 .team-name {
 	font-weight: bold;
 	color: #fff;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.team-name:first-child {
+	text-align: right;
+}
+
+.team-name:last-of-type {
+	text-align: left;
 }
 
 .score {
@@ -1214,6 +1382,18 @@ export default defineComponent({
 	background: #000;
 	padding: 2px 6px;
 	border-radius: 4px;
+	flex-shrink: 0;
+}
+
+.tick-display {
+	font-family: monospace;
+	font-size: 11px;
+	color: #888;
+	background: #1a1a1a;
+	padding: 2px 6px;
+	border-radius: 4px;
+	min-width: 70px;
+	text-align: right;
 }
 
 .buttons-row {
@@ -1249,6 +1429,15 @@ export default defineComponent({
 	margin-left: auto;
 }
 
+.speed-display {
+	font-family: monospace;
+	font-size: 11px;
+	color: #aaa;
+	min-width: 45px;
+	text-align: right;
+	margin-left: 4px;
+}
+
 .lighting-toggle {
 	cursor: pointer;
 	user-select: none;
@@ -1257,6 +1446,16 @@ export default defineComponent({
 
 .lighting-toggle:hover {
 	text-decoration: underline;
+}
+
+/* MAX Speed Button */
+.max-speed-btn {
+	padding: 4px 8px !important;
+	font-size: 10px !important;
+	min-height: 20px !important;
+	height: 20px !important;
+	line-height: 1 !important;
+	margin-left: 4px;
 }
 
 /* Settings Dialog Styles */
