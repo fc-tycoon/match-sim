@@ -219,6 +219,8 @@ export default [
 			'**/*[-_.][oO][lL][dD][-_.].*', // e.g. file-old-version.js
 			'**/*[-_.][oO][lL][dD].*',      // e.g. file-old.js
 			'**/[oO][lL][dD][-_.].*',       // e.g. old-file.js
+			// Ignore files starting with underscore (disabled/WIP files)
+			'**/_*',
 		],
 	},
 

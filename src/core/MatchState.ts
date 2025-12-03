@@ -9,6 +9,7 @@
 
 import { EventScheduler } from '@/core/EventScheduler'
 import { Random } from '@/core/Random'
+import { AiPlayState } from '@/core/ai/AiPlayStates'
 
 // Determines part of the match intensity. For instance, AI Managers might behave more aggressively in KNOCKOUT matches.
 // NOTE: There is another MatchIntensity in TeamState.ts that is per-team.
@@ -27,8 +28,11 @@ export const enum MatchType {
  */
 export class MatchState {
 	readonly type: MatchType
-	readonly rand: Random
+	readonly random: Random
 	readonly scheduler: EventScheduler
+
+	/** Current AI play state - drives player movement and behavior */
+	playState: AiPlayState = AiPlayState.KICKOFF_SETUP
 
 	timeElapsed: number = 0
 	totalTime: number = 0
@@ -39,13 +43,13 @@ export class MatchState {
 
 	constructor(
 		type: MatchType,
-		rand: Random,
+		random: Random,
 		scheduler: EventScheduler,
 		hasExtraTime: boolean,
 		hasPenalties: boolean,
 	) {
 		this.type = type
-		this.rand = rand
+		this.random = random
 		this.scheduler = scheduler
 		this.hasExtraTime = hasExtraTime
 		this.hasPenalties = hasPenalties

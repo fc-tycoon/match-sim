@@ -30,6 +30,7 @@
 		"node_modules",
 		"dist",
 		".vite",
-		"src/backups/**"
+		"src/backups/**",
+		"src/**/_*"
 	]
 }

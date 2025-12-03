@@ -9,7 +9,14 @@
 
 import type { Player } from '@/core/Player'
 import { PlayerContext } from '@/core/ai/PlayerContext'
-import { SteeringOutput, SeekBehavior, ArriveBehavior, PursueBehavior, FaceBehavior } from '@/core/ai/SteeringBehaviors'
+import {
+	SteeringOutput,
+	SeekBehavior,
+	ArriveBehavior,
+	PursueBehavior,
+	FaceBehavior,
+	CollisionAvoidanceBehavior,
+} from '@/core/ai/SteeringBehaviors'
 import { IntentionType } from '@/core/ai/PlayerIntentions'
 
 export class PlayerSteering {
@@ -23,17 +30,18 @@ export class PlayerSteering {
 	private _arrive: ArriveBehavior = new ArriveBehavior()
 	private _pursue: PursueBehavior = new PursueBehavior()
 	private _face: FaceBehavior = new FaceBehavior()
+	private _collisionAvoidance: CollisionAvoidanceBehavior = new CollisionAvoidanceBehavior()
 
 	constructor(player: Player) {
 		this._player = player
 	}
 
 	/**
-     * Calculates the steering force based on the current intention.
-     * @param dt Delta time in seconds
-     * @param ctx The player's AI context (contains memory, match state, etc.)
-     * @returns The steering output (force and torque)
-     */
+	 * Calculates the steering force based on the current intention.
+	 * @param dt Delta time in seconds
+	 * @param ctx The player's AI context (contains memory, match state, etc.)
+	 * @returns The steering output (force and torque)
+	 */
 	update(dt: number, ctx: PlayerContext): SteeringOutput {
 		this._output.clear()
 
@@ -66,17 +74,27 @@ export class PlayerSteering {
 
 		case IntentionType.IDLE:
 		case IntentionType.GK_IDLE:
-			// Stop
+			// Stop moving, but apply facing if faceTarget is set
 			this._output.linear.set(0, 0)
-			this._output.angular = 0
-			// Apply braking in Physics layer if force is zero
+			if (ctx.intentions.faceTarget) {
+				this._face.calculateSteering(ctx, this._output)
+			}
 			break
 
 		default:
 			// Default to stop
 			this._output.linear.set(0, 0)
-			this._output.angular = 0
 			break
+		}
+
+		// ═══════════════════════════════════════════════════════════
+		// APPLY COLLISION AVOIDANCE (always, except when idle)
+		// ═══════════════════════════════════════════════════════════
+		// This adds an avoidance force to prevent players from walking
+		// through each other. Applied after the main behavior.
+
+		if (intention.type !== IntentionType.IDLE && intention.type !== IntentionType.GK_IDLE) {
+			this._collisionAvoidance.applyAvoidance(ctx, this._output)
 		}
 
 		return this._output

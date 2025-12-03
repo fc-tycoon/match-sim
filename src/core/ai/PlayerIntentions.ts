@@ -11,41 +11,285 @@ import * as THREE from 'three'
 
 // NOTE: This class is PURELY decision-making and state updates for the Player AI. NOT physics or movement handling.
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//                      M O V E M E N T   E N U M S
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Speed hint for movement intentions.
+ * The AI decides HOW FAST to move (urgency level).
+ * Steering/Physics will translate this to actual velocity.
+ */
+export const enum SpeedHint {
+	/** Standing still, but may rotate */
+	IDLE = 0,
+	/** Slow walk (~1.5 m/s) - conserving energy, positioning */
+	WALK = 1,
+	/** Light jog (~4 m/s) - standard movement */
+	JOG = 2,
+	/** Running (~7 m/s) - purposeful movement */
+	RUN = 3,
+	/** Full sprint (~9.5 m/s) - maximum urgency */
+	SPRINT = 4,
+}
+
+/**
+ * Movement mode relative to body facing direction.
+ * Football players can move in any direction regardless of where they're looking.
+ *
+ * The AI decides HOW to move based on tactical situation:
+ * - FORWARD: Normal running, fastest mode
+ * - BACKWARD: Backpedaling (jockeying, containing), slower but maintains facing
+ * - STRAFE_LEFT/RIGHT: Sidestep movement, useful for positioning adjustments
+ * - AUTO: Let steering decide most efficient mode based on target and facing
+ */
+export const enum MovementMode {
+	/** Let steering calculate optimal movement direction */
+	AUTO = 0,
+	/** Standard forward movement (fastest) */
+	FORWARD = 1,
+	/** Backpedaling - move backward while facing forward (jockey/contain) */
+	BACKWARD = 2,
+	/** Sidestep left */
+	STRAFE_LEFT = 3,
+	/** Sidestep right */
+	STRAFE_RIGHT = 4,
+}
+
+/**
+ * Speed multipliers for different movement modes (relative to forward speed)
+ */
+export const MovementModeSpeedMultiplier: Readonly<Record<MovementMode, number>> = Object.freeze({
+	[MovementMode.AUTO]: 1.0,
+	[MovementMode.FORWARD]: 1.0,
+	[MovementMode.BACKWARD]: 0.6,      // ~60% of forward speed
+	[MovementMode.STRAFE_LEFT]: 0.7,   // ~70% of forward speed
+	[MovementMode.STRAFE_RIGHT]: 0.7,
+})
+
+/**
+ * Base speeds in m/s for each speed hint
+ */
+export const SpeedHintVelocity: Readonly<Record<SpeedHint, number>> = Object.freeze({
+	[SpeedHint.IDLE]: 0,
+	[SpeedHint.WALK]: 1.5,
+	[SpeedHint.JOG]: 4.0,
+	[SpeedHint.RUN]: 7.0,
+	[SpeedHint.SPRINT]: 9.5,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                      T A C T I C A L   R E A S O N S
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Why the AI made this decision - for debugging and tactical analysis.
+ * DO NOT USE STRINGS for AI decision reasons - use this enum for performance!
+ */
+export const enum TacticalReason {
+	NONE = 0,
+
+	// Movement reasons
+	MOVE_TO_SLOT,			// Returning to formation slot
+	MOVE_TO_SPACE,			// Finding open space
+	SUPPORT_ATTACK,			// Providing passing option
+	TRACK_RUNNER,			// Following opponent's run
+	COVER_SPACE,			// Filling defensive gap
+	RECOVERY_RUN,			// Sprinting back after losing ball
+
+	// Pressing reasons
+	PRESS_BALL_CARRIER,		// Closing down player with ball
+	PRESS_PASSING_LANE,		// Blocking passing option
+	PRESS_TRIGGER,			// Triggered by tactical instruction
+
+	// Marking reasons
+	MARK_ASSIGNED,			// Man-marking assignment
+	MARK_ZONE_THREAT,		// Marking player entering zone
+	MARK_NEAREST,			// Marking nearest opponent
+
+	// Ball actions
+	RECEIVE_PASS,			// Moving to receive incoming pass
+	CREATE_ANGLE,			// Creating passing angle
+	MAKE_RUN,				// Making run into space
+	HOLD_POSITION,			// Staying put tactically
+
+	// Defensive
+	JOCKEY_ATTACKER,		// Containing attacker
+	BLOCK_SHOT,				// Moving to block shot
+	INTERCEPT_PASS,			// Attempting interception
+
+	// Set pieces
+	SET_PIECE_POSITION,		// Taking set piece position
+	WALL_POSITION,			// Forming defensive wall
+
+	// Goalkeeper
+	GK_POSITION_ADJUST,		// Adjusting angle coverage
+	GK_SWEEP,				// Coming off line
+	GK_DISTRIBUTE,			// Looking for distribution
+}
+
+/**
+ * Communication signals between players.
+ * DO NOT USE STRINGS - use this enum for performance!
+ */
+export const enum CommunicationSignal {
+	NONE = 0,
+
+	// Requesting ball
+	CALL_FOR_BALL,			// "Here!" - wanting the pass
+	CALL_EARLY,				// "Early!" - pass before control
+	CALL_FEET,				// "Feet!" - want ball to feet
+	CALL_SPACE,				// "Space!" - want ball into space
+
+	// Directing teammates
+	POINT_LEFT,				// Pointing to space on left
+	POINT_RIGHT,			// Pointing to space on right
+	POINT_BEHIND,			// Pointing to space behind defense
+
+	// Warnings
+	MAN_ON,					// "Man on!" - pressure coming
+	TIME,					// "Time!" - you have space
+	TURN,					// "Turn!" - can turn with ball
+	LEAVE_IT,				// "Leave it!" - ball going out or keeper's
+
+	// Defensive
+	MARK_UP,				// "Mark up!" - pick up a man
+	SQUEEZE,				// "Squeeze!" - compress shape
+	HOLD_LINE,				// "Hold!" - maintain offside line
+	DROP,					// "Drop!" - fall back
+}
+
+/**
+ * Type of scan target for vision system.
+ */
+export const enum ScanTargetType {
+	/** No active scan target */
+	NONE = 0,
+	/** Scanning a specific player */
+	PLAYER,
+	/** Scanning the ball */
+	BALL,
+	/** Scanning a location (goal, space, passing lane) */
+	LOCATION,
+}
+
+/**
+ * Scan target for vision system - what to look at and why.
+ */
+export interface ScanTarget {
+	/** Type of target being scanned */
+	type: ScanTargetType
+	/** Player ID if scanning a player */
+	playerId?: number
+	/** Location if scanning a spot (Vector3 for looking up/down at ball etc.) */
+	location?: THREE.Vector3
+	/** Why we're scanning this target */
+	reason: TacticalReason
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                      P L A Y E R   I N T E N T I O N S
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export interface PlayerIntentions {
 	type: IntentionType
 
-	// Targets
-	targetPosition?: THREE.Vector3      // Where to go / Where to kick
-    targetVelocity?: THREE.Vector3      // Desired velocity vector (e.g. for intercepting)
-	targetPlayerId?: number             // Who to chase / Who to pass to
-    targetBodyOrientation?: number      // Desired body facing angle (radians)
+	// ═══════════════════════════════════════════════════════════
+	//                 T A R G E T S
+	// ═══════════════════════════════════════════════════════════
 
-	// Parameters
-	speed?: number                      // 0.0 to 1.0 (Walk vs Sprint)
-	power?: number                      // 0.0 to 1.0 (Kick power)
-	curve?: number                      // -1.0 to 1.0 (Bend)
+	/**
+	 * Where to move to (2D world coordinates).
+	 * X = goal-to-goal, Y = touchline-to-touchline.
+	 *
+	 * NOTE: This is Vector2, NOT Vector3! Player movement is on the ground plane.
+	 * For aerial actions (headers, volleys), use separate action intentions.
+	 * Jumping happens at the movement target, not during travel.
+	 */
+	targetPosition?: THREE.Vector2
 
-    // Head & Vision Hints (Decoupled from Movement)
-    lookAtTarget?: THREE.Vector3        // Where the head should try to face (independent of body if possible)
-    scanInterest?: THREE.Vector3        // A suggestion for the vision system (e.g. "Check this area")
+	/**
+	 * Desired velocity vector for intercepting moving targets (2D world coordinates).
+	 * X = goal-to-goal direction, Y = touchline-to-touchline direction.
+	 *
+	 * NOTE: Vector2 - integrates directly with PlayerBody.velocity
+	 */
+	targetVelocity?: THREE.Vector2
 
-	// Debug / Metadata
-	tacticalReason?: string             // e.g. "RunInBehind", "Support"
+	/** Player ID to interact with (chase, pass to, mark) */
+	targetPlayerId?: number
 
-    // Communication
-    signal?: string                     // e.g. "POINT_TO_SPACE", "CALL_FOR_BALL"
+	// ═══════════════════════════════════════════════════════════
+	//                 M O V E M E N T   H I N T S
+	// ═══════════════════════════════════════════════════════════
+
+	/** How fast to move (urgency level) - defaults to JOG */
+	speedHint?: SpeedHint
+
+	/** How to move relative to facing (forward/backward/strafe) - defaults to AUTO */
+	movementMode?: MovementMode
+
+	/**
+	 * Where the body should face while moving (2D world coordinates).
+	 * If not set, body faces movement direction (AUTO mode).
+	 *
+	 * NOTE: Vector2 - body rotation is a 2D angle on the ground plane.
+	 * Used for: jockeying (face attacker while moving back), looking at ball while repositioning.
+	 */
+	faceTarget?: THREE.Vector2
+
+	/**
+	 * Where the head/eyes should look (3D world coordinates).
+	 * Independent of body facing - can look up at lofted ball, down at feet.
+	 *
+	 * NOTE: Vector3 - allows vertical look direction (up at ball, down at ground).
+	 * If not set, defaults to faceTarget direction at eye height.
+	 */
+	lookAtTarget?: THREE.Vector3
+
+	/**
+	 * What to scan with the vision system.
+	 * Can be a player, the ball, or a location (goal, passing lane, space).
+	 *
+	 * NOTE: Structured target, not arbitrary point. AI must have a REASON for scanning.
+	 */
+	scanTarget?: ScanTarget
+
+	// ═══════════════════════════════════════════════════════════
+	//                 A C T I O N   P A R A M E T E R S
+	// ═══════════════════════════════════════════════════════════
+
+	/** Kick/throw power (0.0 to 1.0) */
+	power?: number
+
+	/** Ball curve/bend (-1.0 to 1.0) */
+	curve?: number
+
+	// ═══════════════════════════════════════════════════════════
+	//                 D E B U G   /   M E T A D A T A
+	// ═══════════════════════════════════════════════════════════
+
+	/**
+	 * Why the AI made this decision.
+	 * NOTE: Use TacticalReason enum, NOT strings! String comparisons kill performance.
+	 */
+	tacticalReason?: TacticalReason
+
+	/**
+	 * Communication signal to teammates.
+	 * NOTE: Use CommunicationSignal enum, NOT strings!
+	 */
+	signal?: CommunicationSignal
 }
 
 export interface PlayerAction {
 	type: ActionType
-	targetPosition?: THREE.Vector3		// for passes, shots, throws etc.
-	force?: number						// optional force/power parameter (0.0 - 1.0), if applicable
-}
-
-export interface ScanTarget {
-	type: ActionType
-	targetPosition?: THREE.Vector3		// for passes, shots, throws etc.
-	force?: number						// optional force/power parameter (0.0 - 1.0), if applicable
+	/** Target position for passes, shots, throws (2D world coordinates) */
+	targetPosition?: THREE.Vector2
+	/** Height target for lofted balls, headers etc. */
+	targetHeight?: number
+	/** Optional force/power parameter (0.0 - 1.0), if applicable */
+	force?: number
 }
 
 // These are the Functional Intentions that the Steering Layer knows how to execute.

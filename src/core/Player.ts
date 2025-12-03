@@ -7,6 +7,7 @@
  * See LICENSE.md in the project root for license terms.
  */
 
+import * as THREE from 'three'
 import { Team } from '@/core/Team'
 import { PlayerSkills, DEFAULT_SKILLS } from '@/core/PlayerSkills'
 import { PlayerContext } from '@/core/ai/PlayerContext'
@@ -60,6 +61,17 @@ export class Player {
 
 	context: PlayerContext | null = null
 
+	// ═══════════════════════════════════════════════════════════
+	//              C A C H E D   V E C T O R S
+	// ═══════════════════════════════════════════════════════════
+	// Pre-allocated vectors to avoid allocations in getters
+
+	/** Cached slot world position (reused by slotWorldPosition getter) */
+	#cachedSlotWorldPos: THREE.Vector2 = new THREE.Vector2()
+
+	/** Cached vector to slot (reused by vectorToSlot getter) */
+	#cachedVectorToSlot: THREE.Vector2 = new THREE.Vector2()
+
 	constructor(config: {
 		id: number,
 		name: string,
@@ -112,5 +124,68 @@ export class Player {
 			}
 		}
 		return null
+	}
+
+	// ═══════════════════════════════════════════════════════════
+	//              U T I L I T Y   G E T T E R S
+	// ═══════════════════════════════════════════════════════════
+
+	/**
+	 * Whether this player is a goalkeeper.
+	 * @returns True if player's current slot is GK
+	 */
+	get isGoalkeeper(): boolean {
+		return this.slot?.code === 'GK'
+	}
+
+	/**
+	 * Direction this player's team is attacking.
+	 * @returns Reference to team's attack direction vector (DO NOT MODIFY)
+	 */
+	get attackDirection(): THREE.Vector2 {
+		return this.team.state.attackDir
+	}
+
+	/**
+	 * World position of this player's assigned slot.
+	 * Returns cached vector for performance.
+	 * @returns Reference to cached vector with slot position, or null if no slot/body
+	 */
+	get slotWorldPosition(): THREE.Vector2 | null {
+		const slot = this.slot
+		if (!slot || !this.body) return null
+
+		// Get slot world position and store in cached vector
+		const worldPos = slot.toWorld2D(this.team)
+		this.#cachedSlotWorldPos.copy(worldPos)
+		return this.#cachedSlotWorldPos
+	}
+
+	/**
+	 * Vector from player's current position to their slot position.
+	 * The vector's length equals the distance to the slot.
+	 * Returns cached vector for performance.
+	 * @returns Reference to cached vector, or null if no slot/body
+	 */
+	get vectorToSlot(): THREE.Vector2 | null {
+		const slot = this.slot
+		if (!slot || !this.body) return null
+
+		// Get slot world position
+		const worldPos = slot.toWorld2D(this.team)
+		this.#cachedVectorToSlot.copy(worldPos)
+
+		// Subtract player position to get vector TO slot
+		this.#cachedVectorToSlot.sub(this.body.position)
+		return this.#cachedVectorToSlot
+	}
+
+	/**
+	 * Distance from player's current position to their slot position.
+	 * @returns Distance in meters, or 0 if no slot/body
+	 */
+	get distanceToSlot(): number {
+		const vec = this.vectorToSlot
+		return vec ? vec.length() : 0
 	}
 }

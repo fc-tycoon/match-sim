@@ -176,7 +176,6 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 				if (child.type === 'SkinnedMesh') {
 					skinnedCount++
 					const sm = child as THREE.SkinnedMesh
-					const worldMat = new THREE.Matrix4()
 					sm.matrixWorld.decompose(worldPos, new THREE.Quaternion(), worldScale)
 					console.log(`  SkinnedMesh "${sm.name}" worldScale:`, worldScale.toArray())
 				}
@@ -264,10 +263,12 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 	 * Load animations from the asset registry.
 	 */
 	private loadAnimations(): void {
-		// Map of animation keys to PlayerAnimationName
+		// Map asset keys to internal animation names
 		const animationMappings: Array<[string, PlayerAnimationName]> = [
 			['anim-idle', 'idle'],
 			['anim-breathing-idle', 'breathing-idle'],
+			['anim-walking', 'walking'],
+			['anim-standard-walk', 'standard-walk'],
 			['anim-jog-forward', 'jog-forward'],
 			['anim-jog-backward', 'jog-backward'],
 			['anim-jog-strafe-left', 'jog-strafe-left'],
@@ -282,17 +283,71 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 		for (const [assetKey, animName] of animationMappings) {
 			const clip = assets.getAnimation(assetKey)
 			if (clip) {
-				// Rename clip for easier debugging
 				clip.name = animName
 				this.animationClips.set(animName, clip)
 			}
 		}
+	}
 
-		if (import.meta.env.DEV) {
-			console.log(
-				`AnimatedPlayerModel[${this.config.playerId}] loaded ${this.animationClips.size} animations`,
-			)
+	/**
+	 * Resolve an animation name to a clip, using fallbacks if needed.
+	 * Returns the clip and the actual animation name used.
+	 *
+	 * @param name - Requested animation name
+	 * @returns Tuple of [clip, actualName] or [null, name] if not found
+	 */
+	private resolveAnimation(name: PlayerAnimationName): [THREE.AnimationClip | null, PlayerAnimationName] {
+		// Try direct lookup
+		const clip = this.animationClips.get(name)
+		if (clip) {
+			return [clip, name]
 		}
+
+		// Fallback chains for specific animations
+		const fallbackChains: Partial<Record<PlayerAnimationName, PlayerAnimationName[]>> = {
+			'walking': ['standard-walk', 'jog-forward', 'breathing-idle'],
+			'standard-walk': ['walking', 'jog-forward', 'breathing-idle'],
+			'idle': ['breathing-idle'],
+		}
+
+		const fallbacks = fallbackChains[name]
+		if (fallbacks) {
+			for (const fallback of fallbacks) {
+				const fallbackClip = this.animationClips.get(fallback)
+				if (fallbackClip) {
+					return [fallbackClip, fallback]
+				}
+			}
+		}
+
+		return [null, name]
+	}
+
+	/**
+	 * Get or create an animation action for a clip.
+	 *
+	 * @param name - Animation name (for caching)
+	 * @param clip - Animation clip
+	 * @param options - Action options
+	 * @returns The animation action
+	 */
+	private getOrCreateAction(
+		name: PlayerAnimationName,
+		clip: THREE.AnimationClip,
+		options: { loop?: boolean; timeScale?: number } = {},
+	): THREE.AnimationAction {
+		let action = this.animationActions.get(name)
+		if (!action) {
+			action = this.mixer!.clipAction(clip)
+			this.animationActions.set(name, action)
+		}
+
+		// Configure action
+		action.loop = options.loop !== false ? THREE.LoopRepeat : THREE.LoopOnce
+		action.clampWhenFinished = options.loop === false
+		action.timeScale = options.timeScale ?? 1
+
+		return action
 	}
 
 	/**
@@ -525,7 +580,7 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 			return
 		}
 
-		const clip = this.animationClips.get(name)
+		const [clip, actualName] = this.resolveAnimation(name)
 		if (!clip) {
 			console.warn(`AnimatedPlayerModel: Animation '${name}' not found`)
 			return
@@ -536,22 +591,11 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 			this.activeAction.stop()
 		}
 
-		// Get or create action
-		let action = this.animationActions.get(name)
-		if (!action) {
-			action = this.mixer.clipAction(clip)
-			this.animationActions.set(name, action)
-		}
-
-		// Configure action
-		action.loop = options.loop !== false ? THREE.LoopRepeat : THREE.LoopOnce
-		action.clampWhenFinished = options.loop === false
-		action.timeScale = options.timeScale ?? 1
-
-		// Play
+		// Play new animation
+		const action = this.getOrCreateAction(actualName, clip, options)
 		action.reset().play()
 		this.activeAction = action
-		this._currentAnimation = name
+		this._currentAnimation = actualName
 	}
 
 	/**
@@ -568,35 +612,26 @@ export class AnimatedPlayerModel extends PlayerModelBase {
 			return
 		}
 
-		const clip = this.animationClips.get(name)
+		const [clip, actualName] = this.resolveAnimation(name)
 		if (!clip) {
 			console.warn(`AnimatedPlayerModel: Animation '${name}' not found for crossfade`)
 			return
 		}
 
-		// Get or create new action
-		let newAction = this.animationActions.get(name)
-		if (!newAction) {
-			newAction = this.mixer.clipAction(clip)
-			this.animationActions.set(name, newAction)
-		}
+		const newAction = this.getOrCreateAction(actualName, clip, options)
 
-		// Configure new action
-		newAction.loop = options.loop !== false ? THREE.LoopRepeat : THREE.LoopOnce
-		newAction.clampWhenFinished = options.loop === false
-		newAction.timeScale = options.timeScale ?? 1
-
-		// Crossfade
+		// Crossfade from current to new action
 		if (this.activeAction && this.activeAction !== newAction) {
 			newAction.reset()
 			newAction.setEffectiveWeight(1)
+			newAction.play()
 			this.activeAction.crossFadeTo(newAction, duration, true)
 		} else {
 			newAction.reset().play()
 		}
 
 		this.activeAction = newAction
-		this._currentAnimation = name
+		this._currentAnimation = actualName
 	}
 
 	/**

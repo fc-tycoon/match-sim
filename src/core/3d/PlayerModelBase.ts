@@ -20,6 +20,8 @@ import * as THREE from 'three'
 export type PlayerAnimationName =
 	| 'idle'
 	| 'breathing-idle'
+	| 'walking'
+	| 'standard-walk'
 	| 'jog-forward'
 	| 'jog-backward'
 	| 'jog-strafe-left'

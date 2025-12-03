@@ -1321,6 +1321,8 @@ export default defineComponent({
 	overflow-y: auto;
 	padding: 6px 10px;
 	background: rgb(0 0 0 / 20%);
+	user-select: text;
+	cursor: text;
 }
 
 .empty-log {

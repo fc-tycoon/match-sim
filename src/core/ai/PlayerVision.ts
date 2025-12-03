@@ -76,7 +76,7 @@ export class PlayerVision {
 
 	constructor(player: Player, match: Match) {
 		this.#player = player
-		this.#rng = match.state.rand
+		this.#rng = match.state.random
 
 		const {
 			vision,

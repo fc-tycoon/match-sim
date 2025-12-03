@@ -88,6 +88,15 @@ export const settings = reactive({
 
 		/** AABB line opacity (0-1) */
 		aabbOpacity: 0.6,
+
+		/** Show formation slot markers (target positions for each player) */
+		showSlotMarkers: true,
+
+		/** Show AI movement lines (from player to their target position) */
+		showAiMovementLines: true,
+
+		/** Show AI face direction (where player is trying to look) */
+		showAiFaceDirection: true,
 	},
 
 	// Shadow Quality Setting (loaded from localStorage)

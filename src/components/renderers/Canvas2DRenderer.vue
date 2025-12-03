@@ -14,6 +14,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { CoordinateTransforms } from '@/core/CoordinateTransforms'
+import type { Team } from '@/core/Team'
 import type { Box2 } from 'three'
 
 export default defineComponent({
@@ -309,6 +310,153 @@ export default defineComponent({
 					ctx.lineTo(aabb.frontEdge, aabb.leftEdge)
 					ctx.closePath()
 					ctx.stroke()
+				})
+
+				ctx.restore()
+			}
+
+			// ═══════════════════════════════════════════════════════════════════════
+			// SLOT MARKERS (debug visualization)
+			// ═══════════════════════════════════════════════════════════════════════
+
+			if (this.$settings.debug.showSlotMarkers && this.$match.teams?.length) {
+				ctx.save()
+
+				// Cast needed due to Vue reactive types not recognizing private class fields
+				;(this.$match.teams as unknown as Team[]).forEach((team, index) => {
+					const slotPlayers = team.tactics?.formation?.slotPlayers
+					if (!slotPlayers) return
+
+					const isHome = index === 0
+					const teamColor = team.color ?? (isHome ? 0x00ff00 : 0xff0000)
+
+					for (const sp of slotPlayers) {
+						const slot = sp.slot
+
+						// Skip goalkeeper slots - they have separate positioning
+						if (slot.code === 'GK') continue
+
+						const worldPos = slot.toWorld2D(team)
+
+						// Draw slot marker (small cross)
+						const markerSize = 1.0 // 1m
+						ctx.strokeStyle = '#' + teamColor.toString(16).padStart(6, '0')
+						ctx.lineWidth = 1.5 / this.scale
+						ctx.globalAlpha = 0.6
+
+						// Horizontal line
+						ctx.beginPath()
+						ctx.moveTo(worldPos.x - markerSize, worldPos.y)
+						ctx.lineTo(worldPos.x + markerSize, worldPos.y)
+						ctx.stroke()
+
+						// Vertical line
+						ctx.beginPath()
+						ctx.moveTo(worldPos.x, worldPos.y - markerSize)
+						ctx.lineTo(worldPos.x, worldPos.y + markerSize)
+						ctx.stroke()
+
+						// Slot code label
+						ctx.save()
+						ctx.translate(worldPos.x, worldPos.y)
+						ctx.scale(1 / this.scale, -1 / this.scale) // Flip Y for text
+						ctx.fillStyle = '#' + teamColor.toString(16).padStart(6, '0')
+						ctx.font = '8px Arial'
+						ctx.textAlign = 'center'
+						ctx.textBaseline = 'top'
+						ctx.globalAlpha = 0.8
+						ctx.fillText(slot.code, 0, 8)
+						ctx.restore()
+					}
+				})
+
+				ctx.restore()
+			}
+
+			// ═══════════════════════════════════════════════════════════════════════
+			// AI MOVEMENT LINES (debug visualization)
+			// ═══════════════════════════════════════════════════════════════════════
+
+			if (this.$settings.debug.showAiMovementLines && this.$match.players?.length) {
+				ctx.save()
+				ctx.lineWidth = 1 / this.scale
+				ctx.setLineDash([3 / this.scale, 3 / this.scale])
+
+				this.$match.players.forEach(player => {
+					if (!player.body || !player.context) return
+
+					const intentions = player.context.intentions
+					const targetPos = intentions.targetPosition
+
+					// Draw line from player to target position
+					if (targetPos) {
+						const px = player.body.position.x
+						const py = player.body.position.y
+						// targetPosition is Vector2
+						const tx = targetPos.x
+						const ty = targetPos.y
+
+						// Line color based on team
+						const teamColor = player.team?.color ?? 0xffffff
+						ctx.strokeStyle = '#' + teamColor.toString(16).padStart(6, '0')
+						ctx.globalAlpha = 0.5
+
+						ctx.beginPath()
+						ctx.moveTo(px, py)
+						ctx.lineTo(tx, ty)
+						ctx.stroke()
+
+						// Small circle at target
+						ctx.beginPath()
+						ctx.arc(tx, ty, 0.3, 0, Math.PI * 2)
+						ctx.stroke()
+					}
+				})
+
+				ctx.restore()
+			}
+
+			// ═══════════════════════════════════════════════════════════════════════
+			// AI FACE DIRECTION (debug visualization)
+			// ═══════════════════════════════════════════════════════════════════════
+
+			if (this.$settings.debug.showAiFaceDirection && this.$match.players?.length) {
+				ctx.save()
+				ctx.lineWidth = 1.5 / this.scale
+
+				this.$match.players.forEach(player => {
+					if (!player.body || !player.context) return
+
+					const intentions = player.context.intentions
+					const faceTarget = intentions.faceTarget
+
+					// Draw line from player to face target
+					if (faceTarget) {
+						const px = player.body.position.x
+						const py = player.body.position.y
+						// faceTarget is Vector2
+						const fx = faceTarget.x
+						const fy = faceTarget.y
+
+						// Direction to face target (normalize and scale)
+						const dx = fx - px
+						const dy = fy - py
+						const dist = Math.sqrt(dx * dx + dy * dy)
+						if (dist > 0.1) {
+							// Draw shorter line showing face direction (5m max)
+							const lineLen = Math.min(dist, 5)
+							const endX = px + (dx / dist) * lineLen
+							const endY = py + (dy / dist) * lineLen
+
+							ctx.strokeStyle = '#ffff00' // Yellow for face direction
+							ctx.globalAlpha = 0.6
+
+							ctx.beginPath()
+							ctx.moveTo(px, py)
+							ctx.lineTo(endX, endY)
+							ctx.stroke()
+						}
+					}
 				})
 
 				ctx.restore()

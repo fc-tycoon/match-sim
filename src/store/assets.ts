@@ -932,7 +932,6 @@ export const assets = {
 	getAnimation(key: string): THREE.AnimationClip | undefined {
 		const cached = cache.get(key)
 		if (cached?.loaded) {
-			// For animation assets, the clip is stored under the asset key
 			return cached.animations.get(key)
 		}
 		return undefined

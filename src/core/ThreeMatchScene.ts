@@ -501,11 +501,11 @@ export class ThreeMatchScene {
 
 		// Debug: Track created models
 		let createdCount = 0
-		let updatedCount = 0
-		let noBodyCount = 0
+		let _updatedCount = 0
+		let _noBodyCount = 0
 
 		// Update or create players
-		activePlayers.forEach((player, index) => {
+		activePlayers.forEach((player, _index) => {
 			// Get team color directly from player's team
 			const color = player.team.color
 
@@ -546,7 +546,7 @@ export class ThreeMatchScene {
 					console.log(`[ThreeMatchScene] Created player ${player.id} (${player.name}), team ${player.team.id}, isHome: ${isHomeSide}`)
 				}
 			} else {
-				updatedCount++
+				_updatedCount++
 			}
 
 			// Ensure correct parent group
@@ -557,7 +557,7 @@ export class ThreeMatchScene {
 
 			// Get player body for position and orientation
 			if (!player.body) {
-				noBodyCount++
+				_noBodyCount++
 				return
 			}
 
@@ -571,6 +571,25 @@ export class ThreeMatchScene {
 				position: threePos,
 				bodyDirection: -angle, // Negate for Three.js Y-axis rotation
 			})
+
+			// ═══════════════════════════════════════════════════════════════════
+			// ANIMATION: Update based on velocity
+			// ═══════════════════════════════════════════════════════════════════
+			const speed = body.velocity.length()
+			const isMoving = speed > 0.1 // Threshold for "moving"
+
+			// Only update animation if movement state changed
+			if (isMoving !== body.wasMoving) {
+				body.wasMoving = isMoving
+
+				if (isMoving) {
+					// Player started moving: play walking animation
+					model.crossFadeTo('walking', 0.25, { loop: true })
+				} else {
+					// Player stopped: return to idle
+					model.crossFadeTo('breathing-idle', 0.25, { loop: true })
+				}
+			}
 		})
 	}
 

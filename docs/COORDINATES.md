@@ -235,7 +235,8 @@ position2d.y = position3d.z   (World Y = Three.js Z)
 | **vx, vy** | Horizontal velocity (m/s) |
 | **vHeight** | Vertical velocity (m/s, positive = upward) |
 | **bodyDir** | Unit vector - which way torso faces |
-| **headDir** | Unit vector - which way head faces |
+| **headAngle** | Relative angle from body direction (radians, 0 = forward) |
+| **headWorldDir** | Computed unit vector - head world direction (bodyDir + headAngle) |
 
 **Three.js mapping**: `threeX = x`, `threeY = height`, `threeZ = y`
 

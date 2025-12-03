@@ -4,6 +4,30 @@
 
 Goalkeepers are specialized players with unique behaviors, attributes, and AI logic distinct from outfield players. They protect their team's goal, using hands within the penalty area, and make critical decisions about positioning, shot-stopping, crosses, and distribution.
 
+## CRITICAL: Formation Independence
+
+**Goalkeepers are NOT part of the formation system.**
+
+Unlike outfield players, goalkeepers:
+
+- **DO NOT use formation slots** for positioning
+- **ARE NOT constrained** by the FormationAABB (formation bounding box)
+- **HAVE their own positioning logic** based on ball position, danger assessment, and goalkeeper tendencies
+- **USE the GK slot** only for identification purposes, not for world positioning
+
+### Why Goalkeepers Are Separate
+
+1. **Unique Movement Patterns**: Goalkeepers move based on the ball and threats, not tactical formations
+2. **Goal-Centric Positioning**: Their base position is always relative to the goal, not the team's AABB
+3. **Independent Decision Making**: GK AI makes decisions based on saves, crosses, distribution - not formation shape
+4. **Different Constraints**: GKs can use hands in the penalty area, have different speed/agility profiles
+
+### Implementation
+
+- **MatchEngine.updatePlayerAI()**: Detects `slot.code === 'GK'` and routes to `updateGoalkeeperAI()`
+- **Goalkeeper Positioning**: Uses goal line position, not slot.toWorld2D()
+- **See**: `src/core/MatchEngine.ts` - `updateGoalkeeperAI()` method
+
 ## Goalkeeper-Specific Attributes
 
 ### Core Attributes (1-99 Scale)
